@@ -21,6 +21,11 @@ important gate:
 
 Do not build or install when any signature is not unique.
 
+`config/static-signatures/FName_Constructor.lua` is deliberately scan-only.
+Do not move it into the packaged `UE4SS_Signatures` directory unless a runtime
+test proves that a future UE4SS build accepts the override. UE4SS 1109 must use
+its integrated FName scanner for the Frostburn build.
+
 ## 2. Refresh official UE4SS
 
 ```powershell
@@ -62,6 +67,12 @@ pwsh -NoProfile -File .\tools\Build-Release.ps1 `
 
 The result is written under `dist/`. The builder expands the final ZIP again
 and compares every file hash with the staging tree.
+
+The current Frostburn release is intentionally Lua-only. Do not add the Nexus
+PAK/UCAS/UTOC files back to the package: isolated runtime tests show that those
+pre-update cooked assets crash UE 5.8 before a lobby can be used. Re-enable them
+only after rebuilding from the original Unreal project with the current engine
+and completing a clean startup test.
 
 ## 5. Review and commit
 

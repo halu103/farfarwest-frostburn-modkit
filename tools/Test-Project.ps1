@@ -35,7 +35,7 @@ $requiredFiles = @(
     "CHANGELOG.md",
     "config\upstream.lock.json",
     "config\ue4ss\UE4SS-settings.ini",
-    "config\ue4ss\UE4SS_Signatures\FName_Constructor.lua",
+    "config\static-signatures\FName_Constructor.lua",
     "config\ue4ss\UE4SS_Signatures\GNatives.lua",
     "config\ue4ss\UE4SS_Signatures\ProcessLocalScriptFunction.lua",
     "docs\UPDATE_GUIDE.md",
@@ -66,6 +66,10 @@ foreach ($value in @(
 }
 Assert-ProjectCheck -Condition (-not [bool]$lock.morePlayers.redistributable) `
     -Message "More Players must remain marked non-redistributable."
+Assert-ProjectCheck -Condition ($lock.morePlayers.packageMode -eq "lua-only" -and -not [bool]$lock.morePlayers.cookedAssetsCompatible) `
+    -Message "Frostburn releases must stay Lua-only until the cooked assets are rebuilt for UE 5.8."
+Assert-ProjectCheck -Condition (@($lock.ue4ss.runtimeExcludedSignatures) -contains "FName_Constructor.lua") `
+    -Message "The known-bad UE 5.8 FName runtime override must remain excluded."
 
 $settingsPath = Join-Path $projectRoot "config\ue4ss\UE4SS-settings.ini"
 if (Test-Path -LiteralPath $settingsPath) {
@@ -81,7 +85,7 @@ if (Test-Path -LiteralPath $settingsPath) {
 $signatureDirectory = Join-Path $projectRoot "config\ue4ss\UE4SS_Signatures"
 if (Test-Path -LiteralPath $signatureDirectory -PathType Container) {
     $actualSignatures = @(Get-ChildItem -LiteralPath $signatureDirectory -File -Filter "*.lua" | Sort-Object Name | Select-Object -ExpandProperty Name)
-    $expectedSignatures = @("FName_Constructor.lua", "GNatives.lua", "ProcessLocalScriptFunction.lua") | Sort-Object
+    $expectedSignatures = @("GNatives.lua", "ProcessLocalScriptFunction.lua") | Sort-Object
     Assert-ProjectCheck -Condition (($actualSignatures -join "|") -eq ($expectedSignatures -join "|")) `
         -Message "The tracked signature set is incomplete or contains unexpected files."
     foreach ($signature in $actualSignatures) {
@@ -90,6 +94,21 @@ if (Test-Path -LiteralPath $signatureDirectory -PathType Container) {
             $checks++
         } catch {
             $failures.Add("Invalid signature file $signature`: $($_.Exception.Message)")
+        }
+    }
+}
+
+$staticSignatureDirectory = Join-Path $projectRoot "config\static-signatures"
+if (Test-Path -LiteralPath $staticSignatureDirectory -PathType Container) {
+    $staticSignatures = @(Get-ChildItem -LiteralPath $staticSignatureDirectory -File -Filter "*.lua")
+    Assert-ProjectCheck -Condition ($staticSignatures.Count -eq 1 -and $staticSignatures[0].Name -eq "FName_Constructor.lua") `
+        -Message "The static-only FName compatibility sentinel is missing or ambiguous."
+    foreach ($signature in $staticSignatures) {
+        try {
+            Read-LuaAobPattern -Path $signature.FullName | Out-Null
+            $checks++
+        } catch {
+            $failures.Add("Invalid static signature file $($signature.Name)`: $($_.Exception.Message)")
         }
     }
 }

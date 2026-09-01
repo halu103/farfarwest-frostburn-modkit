@@ -119,35 +119,45 @@ if ($packageManifest.ue4ss.commit -ne $lock.ue4ss.commit) {
 if ($packageManifest.morePlayers.archiveSha256 -ne $lock.morePlayers.expectedArchiveSha256) {
     throw "The release uses a different More Players archive than the project lock."
 }
+if ($packageManifest.morePlayers.packageMode -ne $lock.morePlayers.packageMode -or $packageManifest.morePlayers.cookedAssetsIncluded) {
+    throw "The release is not the Frostburn-safe Lua-only package."
+}
 
 $managed = @(
     [pscustomobject]@{
         relativePath = "FarFarWest\Binaries\Win64\dwmapi.dll"
         source = Join-Path $packageGameRoot "Binaries\Win64\dwmapi.dll"
+        install = $true
     },
     [pscustomobject]@{
         relativePath = "FarFarWest\Binaries\Win64\ue4ss"
         source = Join-Path $packageGameRoot "Binaries\Win64\ue4ss"
+        install = $true
     },
     [pscustomobject]@{
         relativePath = "FarFarWest\Content\Paks\~mods\ZZZ_FFWMorePlayers_P.pak"
-        source = Join-Path $packageGameRoot "Content\Paks\~mods\ZZZ_FFWMorePlayers_P.pak"
+        source = $null
+        install = $false
     },
     [pscustomobject]@{
         relativePath = "FarFarWest\Content\Paks\~mods\ZZZ_FFWMorePlayers_P.ucas"
-        source = Join-Path $packageGameRoot "Content\Paks\~mods\ZZZ_FFWMorePlayers_P.ucas"
+        source = $null
+        install = $false
     },
     [pscustomobject]@{
         relativePath = "FarFarWest\Content\Paks\~mods\ZZZ_FFWMorePlayers_P.utoc"
-        source = Join-Path $packageGameRoot "Content\Paks\~mods\ZZZ_FFWMorePlayers_P.utoc"
+        source = $null
+        install = $false
     }
 )
 
 foreach ($entry in $managed) {
-    if (-not (Test-Path -LiteralPath $entry.source)) {
+    if ($entry.install -and -not (Test-Path -LiteralPath $entry.source)) {
         throw "Required release payload is missing: $($entry.relativePath)"
     }
-    Assert-PathInside -Root $expanded -Path $entry.source | Out-Null
+    if ($entry.install) {
+        Assert-PathInside -Root $expanded -Path $entry.source | Out-Null
+    }
     Assert-PathInside -Root $gameRootPath -Path (Join-Path $gameRootPath $entry.relativePath) | Out-Null
 }
 
@@ -201,10 +211,12 @@ try {
     foreach ($entry in $managed) {
         $target = Assert-PathInside -Root $gameRootPath -Path (Join-Path $gameRootPath $entry.relativePath)
         Remove-ManagedPath -Root $gameRootPath -Path $target
-        Copy-ManagedPath -Source $entry.source -Destination $target
+        if ($entry.install) {
+            Copy-ManagedPath -Source $entry.source -Destination $target
+        }
     }
 
-    foreach ($entry in $managed) {
+    foreach ($entry in $managed | Where-Object install) {
         $target = Join-Path $gameRootPath $entry.relativePath
         $sourceInventory = @(Get-PathFileInventory -Path $entry.source -RelativeTo $entry.source)
         $targetInventory = @(Get-PathFileInventory -Path $target -RelativeTo $target)

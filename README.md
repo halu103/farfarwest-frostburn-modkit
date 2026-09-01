@@ -16,6 +16,27 @@ The current baseline targets:
 - UE4SS: `v3.0.1-1109-g5b2663e9`
 - More Players Nexus release: `3.6`
 - Maximum players: `8`
+- Package mode: `Lua-only` (the old cooked PAK assets are excluded)
+
+### Frostburn FName correction
+
+The upstream Frostburn config still ships the old custom
+`FName_Constructor.lua`. Runtime testing showed that UE4SS finds the address but
+rejects the override during verification and never starts the mod. This project
+therefore excludes that runtime override and lets UE4SS 1109's integrated
+PatternSleuth scanner resolve FName. The old pattern remains under
+`config/static-signatures/` only as a read-only executable compatibility
+sentinel and is never packaged.
+
+### Frostburn cooked-asset correction
+
+Live isolation testing showed that the Nexus PAK/UCAS/UTOC set crashes the
+Frostburn UE 5.8 build even when the Lua mod is disabled. The release builder
+therefore packages only the Lua mod and the installer removes the incompatible
+cooked-asset triple after backing it up. In this mode the game reaches the
+lobby, remains stable, and the log confirms `MaxPlayers BEFORE=4 ... AFTER=8`.
+The old PAK must be rebuilt from its Unreal project for UE 5.8 before it can be
+enabled again.
 
 ## Important distribution rule
 
@@ -63,7 +84,7 @@ Install only after closing the game:
 ```powershell
 pwsh -NoProfile -File .\tools\Install-Release.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
-  -Archive ".\dist\FarFarWest-Frostburn-0.2.0.4-CL559-MorePlayers8-UE4SS-1109.zip"
+  -Archive ".\dist\FarFarWest-Frostburn-0.2.0.4-CL559-MorePlayers8-LuaOnly-UE4SS-1109.zip"
 ```
 
 The installer creates a dated backup and never launches the game.

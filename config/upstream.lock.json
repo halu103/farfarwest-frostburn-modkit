@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "projectVersion": "0.1.0",
+  "projectVersion": "0.1.1",
   "target": {
     "game": "Far Far West",
     "productVersion": "0.2.0.4 - CL 559",
@@ -20,7 +20,10 @@
     "assetSha256": "A1B37C9F10A0563FAB00DAD5DAF902871FE1980A0C27C21AD7776DDB220C5E9C",
     "customConfigsAsset": "zCustomGameConfigs.zip",
     "customConfigsSha256": "46A3E9FFCBEF0844C4A55587BDF20B5B14FB6D1BF391CF197BFCE1DB80371629",
-    "farFarWestFixCommit": "5b2663e955a2dfa15d7d960415dc737608dc676d"
+    "farFarWestFixCommit": "5b2663e955a2dfa15d7d960415dc737608dc676d",
+    "runtimeExcludedSignatures": [
+      "FName_Constructor.lua"
+    ]
   },
   "morePlayers": {
     "provider": "Nexus Mods",
@@ -31,6 +34,8 @@
     "internalLuaVersion": "0.5.61",
     "expectedArchiveSha256": "B04D2D6C9EDDDFE3ADC94CCE2F89CBA09C31ACECFFC0934F5CFE2A9EB9738644",
     "defaultMaxPlayers": 8,
+    "packageMode": "lua-only",
+    "cookedAssetsCompatible": false,
     "redistributable": false
   }
 }

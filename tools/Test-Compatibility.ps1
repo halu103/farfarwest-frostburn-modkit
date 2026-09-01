@@ -17,13 +17,29 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Get-ModkitRoot
 $lock = Get-LockData -ProjectRoot $projectRoot
-if (-not $SignatureDirectory) {
-    $SignatureDirectory = Join-Path $projectRoot "config\ue4ss\UE4SS_Signatures"
-}
-
-$signaturePath = [IO.Path]::GetFullPath($SignatureDirectory)
-if (-not (Test-Path -LiteralPath $signaturePath -PathType Container)) {
-    throw "Signature directory not found: $signaturePath"
+$signatureSources = @()
+if ($SignatureDirectory) {
+    $signaturePath = [IO.Path]::GetFullPath($SignatureDirectory)
+    if (-not (Test-Path -LiteralPath $signaturePath -PathType Container)) {
+        throw "Signature directory not found: $signaturePath"
+    }
+    $signatureSources += Get-ChildItem -LiteralPath $signaturePath -File -Filter "*.lua" | ForEach-Object {
+        [pscustomobject]@{ file = $_; kind = "staged-runtime-override" }
+    }
+} else {
+    $runtimePath = Join-Path $projectRoot "config\ue4ss\UE4SS_Signatures"
+    $staticPath = Join-Path $projectRoot "config\static-signatures"
+    foreach ($source in @(
+        [pscustomobject]@{ path = $runtimePath; kind = "runtime-override" },
+        [pscustomobject]@{ path = $staticPath; kind = "static-sentinel" }
+    )) {
+        if (-not (Test-Path -LiteralPath $source.path -PathType Container)) {
+            throw "Signature directory not found: $($source.path)"
+        }
+        $signatureSources += Get-ChildItem -LiteralPath $source.path -File -Filter "*.lua" | ForEach-Object {
+            [pscustomobject]@{ file = $_; kind = $source.kind }
+        }
+    }
 }
 
 $exe = Get-GameExecutable -GameRoot $GameRoot -Lock $lock
@@ -36,13 +52,15 @@ $lockVersionMatch = $productVersion -eq $lock.target.productVersion
 # This is a read-only static scan. It never starts the game or reads process memory.
 $data = [IO.File]::ReadAllBytes($exe)
 $signatureResults = @()
-foreach ($file in Get-ChildItem -LiteralPath $signaturePath -File -Filter "*.lua" | Sort-Object Name) {
+foreach ($source in $signatureSources | Sort-Object { $_.file.Name }) {
+    $file = $source.file
     $pattern = Read-LuaAobPattern -Path $file.FullName
     $hits = @(Find-AobMatches -Data $data -Pattern $pattern -Limit 20)
     $tokens = $pattern.Split(" ", [StringSplitOptions]::RemoveEmptyEntries)
 
     $signatureResults += [pscustomobject]@{
         name = $file.Name
+        kind = $source.kind
         bytes = $tokens.Count
         matches = $hits.Count
         fileOffsets = @($hits | ForEach-Object { "0x{0:X}" -f $_ })

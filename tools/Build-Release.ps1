@@ -64,16 +64,12 @@ Expand-ThirdPartyArchiveSafe -Archive $archivePath -Destination $moreExtract -Sa
 $sourceProxy = Join-Path $baseExtract "dwmapi.dll"
 $sourceUe4ss = Join-Path $baseExtract "ue4ss"
 $sourceMod = Join-Path $moreExtract "FarFarWest\Binaries\Win64\ue4ss\Mods\FFWMorePlayers"
-$sourcePaks = Join-Path $moreExtract "FarFarWest\Content\Paks\~mods"
 
 $requiredSources = @(
     $sourceProxy,
     (Join-Path $sourceUe4ss "UE4SS.dll"),
     (Join-Path $sourceMod "enabled.txt"),
-    (Join-Path $sourceMod "Scripts\main.lua"),
-    (Join-Path $sourcePaks "ZZZ_FFWMorePlayers_P.pak"),
-    (Join-Path $sourcePaks "ZZZ_FFWMorePlayers_P.ucas"),
-    (Join-Path $sourcePaks "ZZZ_FFWMorePlayers_P.utoc")
+    (Join-Path $sourceMod "Scripts\main.lua")
 )
 foreach ($required in $requiredSources) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
@@ -93,9 +89,7 @@ if ($actualMaxPlayers -ne [int]$lock.morePlayers.defaultMaxPlayers) {
 
 $packageRoot = Join-Path $workRoot "package"
 $targetWin64 = Join-Path $packageRoot "FarFarWest\Binaries\Win64"
-$targetPaks = Join-Path $packageRoot "FarFarWest\Content\Paks\~mods"
 New-Item -ItemType Directory -Path $targetWin64 -Force | Out-Null
-New-Item -ItemType Directory -Path $targetPaks -Force | Out-Null
 
 Copy-Item -LiteralPath $sourceProxy -Destination (Join-Path $targetWin64 "dwmapi.dll")
 Copy-Item -LiteralPath $sourceUe4ss -Destination (Join-Path $targetWin64 "ue4ss") -Recurse
@@ -118,13 +112,6 @@ Get-ChildItem -LiteralPath (Join-Path $projectRoot "config\ue4ss\UE4SS_Signature
     }
 
 Copy-Item -LiteralPath $sourceMod -Destination (Join-Path $targetUe4ss "Mods\FFWMorePlayers") -Recurse
-foreach ($name in @(
-    "ZZZ_FFWMorePlayers_P.pak",
-    "ZZZ_FFWMorePlayers_P.ucas",
-    "ZZZ_FFWMorePlayers_P.utoc"
-)) {
-    Copy-Item -LiteralPath (Join-Path $sourcePaks $name) -Destination (Join-Path $targetPaks $name)
-}
 
 $manifest = [pscustomobject]@{
     schemaVersion = 1
@@ -145,6 +132,9 @@ $manifest = [pscustomobject]@{
         displayVersion = $lock.morePlayers.displayVersion
         archiveSha256 = Get-Sha256 -Path $archivePath
         defaultMaxPlayers = $actualMaxPlayers
+        packageMode = $lock.morePlayers.packageMode
+        cookedAssetsIncluded = $false
+        cookedAssetsExcludedReason = "The pre-Frostburn PAK/UCAS/UTOC crashes Far Far West UE 5.8 during startup."
         redistributionPermission = $false
     }
     runtimeTested = $false
@@ -164,7 +154,7 @@ $buildNumber = if ($lock.ue4ss.asset -match "-(\d+)-g[0-9a-fA-F]+\.zip$") {
     "custom"
 }
 $gameVersion = ($lock.target.productVersion -replace "\s*-\s*", "-" -replace "\s+", "")
-$zipName = "FarFarWest-Frostburn-$gameVersion-MorePlayers$actualMaxPlayers-UE4SS-$buildNumber.zip"
+$zipName = "FarFarWest-Frostburn-$gameVersion-MorePlayers$actualMaxPlayers-LuaOnly-UE4SS-$buildNumber.zip"
 $outputZip = Join-Path $outputRoot $zipName
 if (Test-Path -LiteralPath $outputZip) {
     throw "Output already exists: $outputZip"

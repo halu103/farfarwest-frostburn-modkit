@@ -97,7 +97,14 @@ $localConfig = Reset-SafeDirectory `
     -ProjectRoot $projectRoot `
     -Path (Join-Path $projectRoot "config\ue4ss")
 Copy-Item -LiteralPath $stagedSettings -Destination (Join-Path $localConfig "UE4SS-settings.ini")
-Copy-Item -LiteralPath $stagedSignatures -Destination (Join-Path $localConfig "UE4SS_Signatures") -Recurse
+$localSignatures = Join-Path $localConfig "UE4SS_Signatures"
+New-Item -ItemType Directory -Path $localSignatures -Force | Out-Null
+$runtimeExcluded = @($lock.ue4ss.runtimeExcludedSignatures)
+Get-ChildItem -LiteralPath $stagedSignatures -File -Filter "*.lua" | Where-Object {
+    $runtimeExcluded -notcontains $_.Name
+} | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $localSignatures $_.Name)
+}
 
 $majorLine = Select-String -LiteralPath $stagedSettings -Pattern "^MajorVersion\s*=\s*(\d+)" | Select-Object -First 1
 $minorLine = Select-String -LiteralPath $stagedSettings -Pattern "^MinorVersion\s*=\s*(\d+)" | Select-Object -First 1
