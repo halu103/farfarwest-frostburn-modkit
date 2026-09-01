@@ -95,13 +95,4 @@ successfully joining a hosted lobby is the final end-to-end multiplayer test.
 
 Follow [docs/UPDATE_GUIDE.md](docs/UPDATE_GUIDE.md). The important rule is simple: do not install anything if a signature has zero or multiple matches.
 
-## Preparing your GitHub repository
-
-```powershell
-git add .
-git commit -m "Initial Frostburn modkit"
-git remote add origin https://github.com/YOUR-NAME/YOUR-REPOSITORY.git
-git push -u origin main
-```
-
 Only the source and maintenance tooling are intended for GitHub. Do not force-add files ignored under `vendor/`, `work/`, `dist/`, or `artifacts/`.
