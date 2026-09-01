@@ -1,0 +1,15 @@
+# Build outputs and third-party files that must not be redistributed
+artifacts/
+dist/
+vendor/
+work/
+
+# Local configuration and editor files
+.env
+*.user
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini
+*.dmp
+*.log
