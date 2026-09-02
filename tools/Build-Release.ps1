@@ -1,8 +1,5 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
-    [string]$MorePlayersArchive,
-
     [string]$GameRoot,
 
     [string]$OutputDirectory
@@ -15,13 +12,18 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Get-ModkitRoot
 $lock = Get-LockData -ProjectRoot $projectRoot
-$archivePath = [IO.Path]::GetFullPath($MorePlayersArchive)
+$mod = Get-ModData -ProjectRoot $projectRoot
+$sourceRoot = Join-Path $projectRoot "src"
+$sourceMod = Assert-PathInside `
+    -Root $sourceRoot `
+    -Path (Join-Path $sourceRoot $mod.sourceDirectory.Replace("/", "\"))
 
-if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
-    throw "More Players archive not found: $archivePath"
+if ($mod.id -notmatch "^[A-Za-z][A-Za-z0-9_-]+$") {
+    throw "Unsafe mod id in src/mod.json: $($mod.id)"
 }
-
-Assert-Sha256 -Path $archivePath -Expected $lock.morePlayers.expectedArchiveSha256 | Out-Null
+if (-not (Test-Path -LiteralPath $sourceMod -PathType Container)) {
+    throw "Owned mod source directory not found: $sourceMod"
+}
 
 if ($GameRoot) {
     & (Join-Path $PSScriptRoot "Test-Compatibility.ps1") `
@@ -57,13 +59,8 @@ $baseExtract = Join-Path $workRoot "ue4ss-base"
 New-Item -ItemType Directory -Path $baseExtract | Out-Null
 Expand-ZipSafe -Archive $ue4ssArchive -Destination $baseExtract -SafetyRoot $workRoot
 
-$moreExtract = Join-Path $workRoot "more-players"
-New-Item -ItemType Directory -Path $moreExtract | Out-Null
-Expand-ThirdPartyArchiveSafe -Archive $archivePath -Destination $moreExtract -SafetyRoot $workRoot
-
 $sourceProxy = Join-Path $baseExtract "dwmapi.dll"
 $sourceUe4ss = Join-Path $baseExtract "ue4ss"
-$sourceMod = Join-Path $moreExtract "FarFarWest\Binaries\Win64\ue4ss\Mods\FFWMorePlayers"
 
 $requiredSources = @(
     $sourceProxy,
@@ -80,12 +77,17 @@ foreach ($required in $requiredSources) {
 $mainLua = Join-Path $sourceMod "Scripts\main.lua"
 $maxPlayersLine = Select-String -LiteralPath $mainLua -Pattern "^local TARGET_MAX_PLAYERS\s*=\s*(\d+)" | Select-Object -First 1
 if (-not $maxPlayersLine) {
-    throw "TARGET_MAX_PLAYERS was not found in More Players main.lua."
+    throw "TARGET_MAX_PLAYERS was not found in the owned mod source."
 }
 $actualMaxPlayers = [int]$maxPlayersLine.Matches[0].Groups[1].Value
-if ($actualMaxPlayers -ne [int]$lock.morePlayers.defaultMaxPlayers) {
-    throw "More Players target is $actualMaxPlayers, but the lock expects $($lock.morePlayers.defaultMaxPlayers)."
+if ($actualMaxPlayers -ne [int]$mod.maxPlayers) {
+    throw "Lua target is $actualMaxPlayers, but src/mod.json expects $($mod.maxPlayers)."
 }
+$versionLine = Select-String -LiteralPath $mainLua -Pattern '^local MOD_VERSION\s*=\s*"([^"]+)"' | Select-Object -First 1
+if (-not $versionLine -or $versionLine.Matches[0].Groups[1].Value -ne $mod.version) {
+    throw "MOD_VERSION in main.lua must match src/mod.json."
+}
+$sourceTreeSha256 = Get-DirectoryTreeSha256 -Path $sourceMod
 
 $packageRoot = Join-Path $workRoot "package"
 $targetWin64 = Join-Path $packageRoot "FarFarWest\Binaries\Win64"
@@ -111,10 +113,14 @@ Get-ChildItem -LiteralPath (Join-Path $projectRoot "config\ue4ss\UE4SS_Signature
         Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $targetSignatures $_.Name)
     }
 
-Copy-Item -LiteralPath $sourceMod -Destination (Join-Path $targetUe4ss "Mods\FFWMorePlayers") -Recurse
+Copy-Item -LiteralPath $sourceMod -Destination (Join-Path $targetUe4ss "Mods\$($mod.id)") -Recurse
+$packagedMod = Join-Path $targetUe4ss "Mods\$($mod.id)"
+if ((Get-DirectoryTreeSha256 -Path $packagedMod) -ne $sourceTreeSha256) {
+    throw "Owned mod source changed while the package was being built."
+}
 
 $manifest = [pscustomobject]@{
-    schemaVersion = 1
+    schemaVersion = 2
     builtAtUtc = [DateTime]::UtcNow.ToString("o")
     projectVersion = $lock.projectVersion
     targetProductVersion = $lock.target.productVersion
@@ -126,16 +132,15 @@ $manifest = [pscustomobject]@{
         asset = $lock.ue4ss.asset
         assetSha256 = Get-Sha256 -Path $ue4ssArchive
     }
-    morePlayers = [pscustomobject]@{
-        nexusModId = $lock.morePlayers.modId
-        nexusFileId = $lock.morePlayers.fileId
-        displayVersion = $lock.morePlayers.displayVersion
-        archiveSha256 = Get-Sha256 -Path $archivePath
-        defaultMaxPlayers = $actualMaxPlayers
-        packageMode = $lock.morePlayers.packageMode
-        cookedAssetsIncluded = $false
-        cookedAssetsExcludedReason = "The pre-Frostburn PAK/UCAS/UTOC crashes Far Far West UE 5.8 during startup."
-        redistributionPermission = $false
+    mod = [pscustomobject]@{
+        id = $mod.id
+        name = $mod.name
+        version = $mod.version
+        license = $mod.license
+        maxPlayers = $actualMaxPlayers
+        packageMode = $mod.packageMode
+        sourceTreeSha256 = $sourceTreeSha256
+        cookedAssetsIncluded = [bool]$mod.cookedAssetsIncluded
     }
     runtimeTested = $false
 }
@@ -154,7 +159,7 @@ $buildNumber = if ($lock.ue4ss.asset -match "-(\d+)-g[0-9a-fA-F]+\.zip$") {
     "custom"
 }
 $gameVersion = ($lock.target.productVersion -replace "\s*-\s*", "-" -replace "\s+", "")
-$zipName = "FarFarWest-Frostburn-$gameVersion-MorePlayers$actualMaxPlayers-LuaOnly-UE4SS-$buildNumber.zip"
+$zipName = "FarFarWest-Frostburn-$gameVersion-$($mod.id)-v$($mod.version)-UE4SS-$buildNumber.zip"
 $outputZip = Join-Path $outputRoot $zipName
 if (Test-Path -LiteralPath $outputZip) {
     throw "Output already exists: $outputZip"
@@ -189,6 +194,9 @@ foreach ($sourceFile in $sourceFiles) {
     sha256 = Get-Sha256 -Path $outputZip
     size = (Get-Item -LiteralPath $outputZip).Length
     filesVerified = $verifiedFiles
+    modId = $mod.id
+    modVersion = $mod.version
+    sourceTreeSha256 = $sourceTreeSha256
     targetMaxPlayers = $actualMaxPlayers
     runtimeTested = $false
 }

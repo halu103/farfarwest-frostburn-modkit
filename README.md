@@ -1,119 +1,126 @@
-# Far Far West Frostburn Modkit
+# Far Far West Frostburn 8 Players
 
-Source-first tooling for maintaining a Far Far West More Players package across game updates.
+An independent, source-owned UE4SS mod and maintenance kit for raising Far Far
+West's multiplayer capacity to eight players after the Frostburn/Unreal Engine
+5.8 update.
 
-The project does four things without starting the game:
+The repository contains the complete Lua source for `FFWFrostburn8`. It does
+not download, copy, or package another player's-capacity mod, and it does not
+contain cooked game assets.
 
-1. Pins an official UE4SS experimental build by commit and SHA-256.
-2. Tracks the Far Far West UE 5.8 compatibility configuration in Git.
-3. Scans the current game executable and requires every critical AOB signature to match exactly once.
-4. Combines UE4SS with a locally downloaded More Players archive into a hash-verified release ZIP.
-
-The current baseline targets:
+Current baseline:
 
 - Far Far West: `0.2.0.4 - CL 559`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- More Players Nexus release: `3.6`
-- Maximum players: `8`
-- Package mode: `Lua-only` (the old cooked PAK assets are excluded)
+- Owned mod: `FFWFrostburn8 v1.0.0` (MIT)
+- Target capacity: `8`
+- Package mode: source-owned Lua only
 
-### Frostburn FName correction
+## Install with one command
 
-The upstream Frostburn config still ships the old custom
-`FName_Constructor.lua`. Runtime testing showed that UE4SS finds the address but
-rejects the override during verification and never starts the mod. This project
-therefore excludes that runtime override and lets UE4SS 1109's integrated
-PatternSleuth scanner resolve FName. The old pattern remains under
-`config/static-signatures/` only as a read-only executable compatibility
-sentinel and is never packaged.
-
-### Frostburn cooked-asset correction
-
-Live isolation testing showed that the Nexus PAK/UCAS/UTOC set crashes the
-Frostburn UE 5.8 build even when the Lua mod is disabled. The release builder
-therefore packages only the Lua mod and the installer removes the incompatible
-cooked-asset triple after backing it up. In this mode the game reaches the
-lobby, remains stable, and the log confirms `MaxPlayers BEFORE=4 ... AFTER=8`.
-The old PAK must be rebuilt from its Unreal project for UE 5.8 before it can be
-enabled again.
-
-## Important distribution rule
-
-The More Players author does not permit re-uploading their files to other sites. This repository therefore does **not** contain their Lua, PAK, UCAS, UTOC, or Nexus archive.
-
-Download the archive from Nexus Mods yourself and pass its local path to the build script. Generated packages are placed in `dist/`, which is excluded from Git.
-
-## Repository layout
-
-```text
-config/
-  upstream.lock.json       Pinned game, UE4SS, and More Players versions/hashes
-  ue4ss/                   Version-controlled Far Far West compatibility config
-docs/
-  UPDATE_GUIDE.md          Procedure for handling a new game update
-tools/
-  Build-Release.ps1        Reproducible package builder
-  Test-Compatibility.ps1  Static AOB and version checker; never starts the game
-  Refresh-Upstream.ps1     Pulls a new official UE4SS build/config into the repo
-  Install-Release.ps1      Safe installer; refuses while the game is running
-  Restore-Backup.ps1       Restores a backup made by the installer
-  Test-RuntimeLog.ps1      Checks an existing UE4SS log without starting the game
-  Test-Project.ps1         CI/repository validation
-```
-
-## First use
-
-Run a static compatibility check:
+Close Far Far West, open PowerShell in this repository, and run:
 
 ```powershell
-pwsh -NoProfile -File .\tools\Test-Compatibility.ps1 `
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1
+```
+
+The command automatically finds the Steam installation, validates the exact
+game build and AOB signatures, obtains the pinned official UE4SS asset when it
+is not already cached, builds the owned mod from `src/`, creates a dated backup,
+installs the package, and verifies every installed file.
+
+It never starts, closes, or restarts the game. It refuses to write while
+`FarFarWest-Win64-Shipping.exe` is running. No Nexus download is used. Internet
+access is needed only on the first build when the verified official UE4SS ZIP
+is not present under the ignored `vendor/cache/` directory.
+
+If automatic Steam discovery is not available, pass the game path:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
-Build a release using your locally downloaded Nexus archive:
+## What the mod changes
+
+`src/Mods/FFWFrostburn8/Scripts/main.lua` independently applies the capacity at
+the three layers used by the current game:
+
+1. server-side `AGameSession.MaxPlayers`;
+2. `BP_Manager_Multiplayer_C.MaxPlayers` before a room is created;
+3. native create/update-session capacity parameters discovered from reflected
+   Unreal metadata.
+
+The native hook discovery is fail-closed: only exact capacity field names such
+as `MaxPlayers`, `NumPublicConnections`, and `PublicConnections` are changed.
+If an update renames them, the mod reports that no target was found instead of
+guessing an integer argument.
+
+The mod does not change enemy scaling, create fake players, suppress manual
+kicks, or install PAK/UCAS/UTOC files. The installer removes the exact legacy
+cooked-asset filenames known to crash UE 5.8, but only after including any
+existing copies in its backup.
+
+## Verify the installation
+
+After launching the game normally, run:
 
 ```powershell
-pwsh -NoProfile -File .\tools\Build-Release.ps1 `
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLog.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
-  -MorePlayersArchive "C:\path\to\FFW-More-Players-3.6.7z"
+  -RequireCurrentSession
 ```
 
-Install only after closing the game:
+A passing core report proves that UE4SS and the owned mod loaded without known
+fatal scanner errors, and that the server-side cap was written to eight. The
+report separately exposes:
+
+- `managerCapApplied`: the game's multiplayer manager was set to eight;
+- `nativeSessionHookReady`: a current session create/update hook is attached;
+- `sessionParameterApplied`: a create/update-session call actually passed
+  through a native hook and its capacity was changed to eight;
+- `maximumObservedPlayers`: largest real `PlayerArray` seen in the log;
+- `networkCapacityTested`: at least a fifth real player joined;
+- `fullEightPlayerSessionTested`: eight real players were observed together.
+
+Setting a value to eight is not the same as proving eight network clients. A
+fifth successful join is the end-to-end proof that the original four-player
+limit was exceeded; observing all eight is the definitive full-capacity test.
+
+In the UE console, `FFW8_Status` asks the mod to rescan and print its current
+status to `ue4ss/UE4SS.log`.
+
+## Restore a backup
+
+Close the game and use the backup path printed by the installer:
 
 ```powershell
-pwsh -NoProfile -File .\tools\Install-Release.ps1 `
-  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
-  -Archive ".\dist\FarFarWest-Frostburn-0.2.0.4-CL559-MorePlayers8-LuaOnly-UE4SS-1109.zip"
-```
-
-The installer creates a dated backup and never launches the game.
-
-If you need to undo an installation, close the game and restore the backup path
-printed by the installer:
-
-```powershell
-pwsh -NoProfile -File .\tools\Restore-Backup.ps1 `
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Restore-Backup.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
   -BackupDirectory ".\artifacts\backups\INSTALL-TIMESTAMP"
 ```
 
-Neither script can close, restart, or launch Far Far West. Both refuse to write
-while `FarFarWest-Win64-Shipping.exe` is running.
+## Repository layout
 
-After you launch the game yourself, verify that UE4SS and the mod really loaded:
-
-```powershell
-pwsh -NoProfile -File .\tools\Test-RuntimeLog.ps1 `
-  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```text
+src/                         Owned mod metadata and complete Lua source
+config/upstream.lock.json    Pinned game and official UE4SS versions/hashes
+config/ue4ss/                Tracked Far Far West UE4SS compatibility config
+config/static-signatures/    Read-only compatibility sentinels
+Install-Mod.ps1              One-command build, backup, and installer
+tools/                       Build, validation, runtime, and restore tooling
+docs/UPDATE_GUIDE.md         Maintainer workflow after a game update
 ```
 
-The check passes only when the current log contains UE4SS's event-loop marker,
-the More Players load marker, and `Target MaxPlayers=8`. A real fifth player
-successfully joining a hosted lobby is the final end-to-end multiplayer test.
+Generated or local-only data under `vendor/`, `work/`, `dist/`, and
+`artifacts/` is ignored by Git.
 
-## After a game update
+### Frostburn FName compatibility note
 
-Follow [docs/UPDATE_GUIDE.md](docs/UPDATE_GUIDE.md). The important rule is simple: do not install anything if a signature has zero or multiple matches.
-
-Only the source and maintenance tooling are intended for GitHub. Do not force-add files ignored under `vendor/`, `work/`, `dist/`, or `artifacts/`.
+The official Frostburn config still includes an old custom
+`FName_Constructor.lua`. On this build, UE4SS finds its address but rejects the
+override during runtime verification. The release therefore uses UE4SS 1109's
+integrated FName scanner. The old pattern remains only under
+`config/static-signatures/` for a read-only executable compatibility check and
+is never packaged.

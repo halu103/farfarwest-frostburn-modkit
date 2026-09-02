@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "projectVersion": "0.1.1",
+  "schemaVersion": 2,
+  "projectVersion": "1.0.0",
   "target": {
     "game": "Far Far West",
     "productVersion": "0.2.0.4 - CL 559",
@@ -24,18 +24,5 @@
     "runtimeExcludedSignatures": [
       "FName_Constructor.lua"
     ]
-  },
-  "morePlayers": {
-    "provider": "Nexus Mods",
-    "gameSlug": "farfarwest",
-    "modId": 63,
-    "fileId": 160,
-    "displayVersion": "3.6",
-    "internalLuaVersion": "0.5.61",
-    "expectedArchiveSha256": "B04D2D6C9EDDDFE3ADC94CCE2F89CBA09C31ACECFFC0934F5CFE2A9EB9738644",
-    "defaultMaxPlayers": 8,
-    "packageMode": "lua-only",
-    "cookedAssetsCompatible": false,
-    "redistributable": false
   }
 }

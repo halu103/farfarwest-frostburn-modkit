@@ -6,6 +6,10 @@ param(
     [Parameter(Mandatory)]
     [string]$Archive,
 
+    [Parameter(Mandatory)]
+    [ValidatePattern("^[0-9A-Fa-f]{64}$")]
+    [string]$ExpectedArchiveSha256,
+
     [string]$BackupRoot
 )
 
@@ -40,6 +44,21 @@ function Copy-ManagedPath {
 
     New-Item -ItemType Directory -Path (Split-Path -Parent $Destination) -Force | Out-Null
     Copy-Item -LiteralPath $Source -Destination $Destination -Recurse -Force
+}
+
+function Test-PathWithinOrEqual {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Root,
+
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    $fullRoot = [IO.Path]::GetFullPath($Root).TrimEnd("\")
+    $fullPath = [IO.Path]::GetFullPath($Path).TrimEnd("\")
+    return $fullPath.Equals($fullRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($fullRoot + "\", [StringComparison]::OrdinalIgnoreCase)
 }
 
 function Get-PathFileInventory {
@@ -79,6 +98,7 @@ function Get-PathFileInventory {
 
 $projectRoot = Get-ModkitRoot
 $lock = Get-LockData -ProjectRoot $projectRoot
+$mod = Get-ModData -ProjectRoot $projectRoot
 $gameRootPath = [IO.Path]::GetFullPath($GameRoot).TrimEnd("\")
 $archivePath = [IO.Path]::GetFullPath($Archive)
 
@@ -88,6 +108,7 @@ if (-not (Test-Path -LiteralPath $gameRootPath -PathType Container)) {
 if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
     throw "Release archive not found: $archivePath"
 }
+Assert-Sha256 -Path $archivePath -Expected $ExpectedArchiveSha256 | Out-Null
 
 # Refuse before doing any preparatory work. The check is repeated immediately
 # before the first write to the game directory.
@@ -110,17 +131,50 @@ if (-not (Test-Path -LiteralPath $packageManifestPath -PathType Leaf)) {
 }
 
 $packageManifest = Get-Content -LiteralPath $packageManifestPath -Raw | ConvertFrom-Json
+if ($packageManifest.schemaVersion -ne 2) {
+    throw "Unsupported release manifest schema: $($packageManifest.schemaVersion)"
+}
 if ($packageManifest.targetExecutableSha256 -ne $lock.target.executableSha256) {
     throw "The release targets a different Far Far West executable."
 }
 if ($packageManifest.ue4ss.commit -ne $lock.ue4ss.commit) {
     throw "The release uses a different UE4SS commit than the project lock."
 }
-if ($packageManifest.morePlayers.archiveSha256 -ne $lock.morePlayers.expectedArchiveSha256) {
-    throw "The release uses a different More Players archive than the project lock."
+if ($packageManifest.ue4ss.assetSha256 -ne $lock.ue4ss.assetSha256) {
+    throw "The release uses a different UE4SS archive than the project lock."
 }
-if ($packageManifest.morePlayers.packageMode -ne $lock.morePlayers.packageMode -or $packageManifest.morePlayers.cookedAssetsIncluded) {
-    throw "The release is not the Frostburn-safe Lua-only package."
+if (
+    $packageManifest.mod.id -ne $mod.id -or
+    $packageManifest.mod.version -ne $mod.version -or
+    [int]$packageManifest.mod.maxPlayers -ne [int]$mod.maxPlayers -or
+    $packageManifest.mod.license -ne $mod.license -or
+    $packageManifest.mod.packageMode -ne $mod.packageMode -or
+    [bool]$packageManifest.mod.cookedAssetsIncluded
+) {
+    throw "The release metadata does not match the source-owned mod."
+}
+
+$packageModRoot = Join-Path $packageGameRoot "Binaries\Win64\ue4ss\Mods\$($mod.id)"
+if (-not (Test-Path -LiteralPath $packageModRoot -PathType Container)) {
+    throw "The release is missing the source-owned mod: $($mod.id)"
+}
+$packageModHash = Get-DirectoryTreeSha256 -Path $packageModRoot
+if ($packageModHash -ne $packageManifest.mod.sourceTreeSha256) {
+    throw "The packaged mod source-tree hash is invalid."
+}
+$localSourceRoot = Join-Path $projectRoot "src"
+$localSourceMod = Assert-PathInside `
+    -Root $localSourceRoot `
+    -Path (Join-Path $localSourceRoot $mod.sourceDirectory.Replace("/", "\"))
+if ($packageModHash -ne (Get-DirectoryTreeSha256 -Path $localSourceMod)) {
+    throw "The release was not built from the current owned mod source."
+}
+
+$cookedPayload = @(Get-ChildItem -LiteralPath $packageGameRoot -Recurse -File | Where-Object {
+    $_.Extension.ToLowerInvariant() -in @(".pak", ".ucas", ".utoc")
+})
+if ($cookedPayload.Count -gt 0) {
+    throw "The source-owned Lua release must not contain cooked PAK/UCAS/UTOC files."
 }
 
 $managed = @(
@@ -165,6 +219,12 @@ if (-not $BackupRoot) {
     $BackupRoot = Join-Path $projectRoot "artifacts\backups"
 }
 $backupRootPath = [IO.Path]::GetFullPath($BackupRoot)
+if (Test-PathWithinOrEqual -Root $gameRootPath -Path $backupRootPath) {
+    throw "BackupRoot must not be inside the game directory."
+}
+if (Test-PathWithinOrEqual -Root $workRoot -Path $backupRootPath) {
+    throw "BackupRoot must not be inside the install staging directory."
+}
 New-Item -ItemType Directory -Path $backupRootPath -Force | Out-Null
 $backupDirectory = Join-Path $backupRootPath ([DateTime]::UtcNow.ToString("yyyyMMdd-HHmmssZ"))
 if (Test-Path -LiteralPath $backupDirectory) {
@@ -246,6 +306,10 @@ try {
 
 [pscustomobject]@{
     installed = $true
+    modId = $mod.id
+    modVersion = $mod.version
+    targetMaxPlayers = [int]$mod.maxPlayers
+    sourceTreeSha256 = $packageModHash
     archive = $archivePath
     archiveSha256 = Get-Sha256 -Path $archivePath
     gameRoot = $gameRootPath

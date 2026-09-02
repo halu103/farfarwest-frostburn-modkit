@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "FFWFrostburn8",
+  "name": "Far Far West Frostburn 8 Players",
+  "version": "1.0.0",
+  "license": "MIT",
+  "maxPlayers": 8,
+  "packageMode": "source-owned-lua",
+  "sourceDirectory": "Mods/FFWFrostburn8",
+  "cookedAssetsIncluded": false
+}

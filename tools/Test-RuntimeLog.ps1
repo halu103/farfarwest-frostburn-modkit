@@ -13,6 +13,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Get-ModkitRoot
 $lock = Get-LockData -ProjectRoot $projectRoot
+$mod = Get-ModData -ProjectRoot $projectRoot
 $gameRootPath = [IO.Path]::GetFullPath($GameRoot).TrimEnd("\")
 $logPath = Assert-PathInside `
     -Root $gameRootPath `
@@ -38,16 +39,16 @@ $checks = @(
         pattern = "Event loop start"
     },
     [pscustomobject]@{
-        name = "More Players loaded"
-        pattern = "\[FFWMorePlayers v$([regex]::Escape($lock.morePlayers.internalLuaVersion))\].*Mod loaded"
+        name = "Owned mod loaded"
+        pattern = "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*Mod loaded - v$([regex]::Escape($mod.version))"
     },
     [pscustomobject]@{
         name = "Eight-player target"
-        pattern = "\[FFWMorePlayers v$([regex]::Escape($lock.morePlayers.internalLuaVersion))\].*Target MaxPlayers=$($lock.morePlayers.defaultMaxPlayers)"
+        pattern = "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*Target MaxPlayers=$($mod.maxPlayers)"
     },
     [pscustomobject]@{
         name = "GameSession cap applied"
-        pattern = "InitGameState POST .*MaxPlayers BEFORE=\d+ WRITE=true AFTER=$($lock.morePlayers.defaultMaxPlayers)"
+        pattern = "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*(?:CapWrite source=GameSession.*WRITE=true AFTER=$($mod.maxPlayers)|Status .*sessionCapApplied=true)"
     }
 )
 
@@ -61,30 +62,62 @@ $results = @($checks | ForEach-Object {
 $markersPass = @($results | Where-Object { -not $_.found }).Count -eq 0
 $fatalMarkers = @(
     "AOB scans could not be completed",
-    "Fatal Error"
+    "Fatal Error",
+    "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\] ERROR"
 )
 $fatalResults = @($fatalMarkers | ForEach-Object {
     [pscustomobject]@{
         marker = $_
-        found = $logText.IndexOf($_, [StringComparison]::OrdinalIgnoreCase) -ge 0
+        found = [regex]::IsMatch($logText, $_, [Text.RegularExpressions.RegexOptions]::IgnoreCase)
     }
 })
 $fatalFree = @($fatalResults | Where-Object { $_.found }).Count -eq 0
 $sessionPass = -not $RequireCurrentSession -or $currentSession -eq $true
+
+$observedMatches = [regex]::Matches(
+    $logText,
+    "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*ObservedPlayers=(\d+)",
+    [Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
+$maximumObservedPlayers = 0
+foreach ($match in $observedMatches) {
+    $maximumObservedPlayers = [Math]::Max($maximumObservedPlayers, [int]$match.Groups[1].Value)
+}
+$managerCapApplied = [regex]::IsMatch(
+    $logText,
+    "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*(?:CapWrite source=Manager.*WRITE=true AFTER=$($mod.maxPlayers)|Status .*managerCapApplied=true)",
+    [Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
+$nativeSessionHookReady = [regex]::IsMatch(
+    $logText,
+    "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*NativeHook registered",
+    [Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
+$sessionParameterApplied = [regex]::IsMatch(
+    $logText,
+    "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*SessionParamWrite .*WRITE=true AFTER=$($mod.maxPlayers)",
+    [Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
 $report = [pscustomobject]@{
-    schemaVersion = 1
+    schemaVersion = 2
     mode = "log-only"
     logPath = $logPath
     logLastWriteTimeUtc = $logItem.LastWriteTimeUtc.ToString("o")
     gameRunning = $processes.Count -gt 0
     logBelongsToCurrentRunningSession = $currentSession
-    expectedModVersion = $lock.morePlayers.internalLuaVersion
-    expectedMaxPlayers = [int]$lock.morePlayers.defaultMaxPlayers
-    packageMode = $lock.morePlayers.packageMode
+    expectedModId = $mod.id
+    expectedModVersion = $mod.version
+    expectedMaxPlayers = [int]$mod.maxPlayers
+    packageMode = $mod.packageMode
     checks = $results
+    managerCapApplied = $managerCapApplied
+    nativeSessionHookReady = $nativeSessionHookReady
+    sessionParameterApplied = $sessionParameterApplied
+    maximumObservedPlayers = $maximumObservedPlayers
     fatalMarkers = $fatalResults
     passed = $markersPass -and $fatalFree -and $sessionPass
-    networkCapacityTested = $false
+    networkCapacityTested = $maximumObservedPlayers -ge 5
+    fullEightPlayerSessionTested = $maximumObservedPlayers -ge 8
 }
 
 $report

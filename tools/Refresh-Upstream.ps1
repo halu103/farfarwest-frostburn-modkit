@@ -1,10 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$GameRoot,
-
-    [string]$MorePlayersArchive,
-
-    [string]$MorePlayersVersion
+    [string]$GameRoot
 )
 
 Set-StrictMode -Version Latest
@@ -14,6 +10,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Get-ModkitRoot
 $lock = Get-LockData -ProjectRoot $projectRoot
+$mod = Get-ModData -ProjectRoot $projectRoot
 $workRoot = Reset-SafeDirectory -ProjectRoot $projectRoot -Path (Join-Path $projectRoot "work\refresh")
 
 $headers = @{
@@ -127,49 +124,6 @@ if ($GameRoot) {
     $lock.target.executableSha256 = Get-Sha256 -Path $exe
 }
 
-if ($MorePlayersArchive) {
-    if (-not $MorePlayersVersion) {
-        throw "-MorePlayersVersion is required when updating the More Players archive."
-    }
-
-    $moreArchivePath = [IO.Path]::GetFullPath($MorePlayersArchive)
-    if (-not (Test-Path -LiteralPath $moreArchivePath -PathType Leaf)) {
-        throw "More Players archive not found: $moreArchivePath"
-    }
-
-    $moreExtract = Join-Path $workRoot "more-players"
-    New-Item -ItemType Directory -Path $moreExtract | Out-Null
-    Expand-ThirdPartyArchiveSafe `
-        -Archive $moreArchivePath `
-        -Destination $moreExtract `
-        -SafetyRoot $workRoot
-
-    $mainLua = Join-Path $moreExtract "FarFarWest\Binaries\Win64\ue4ss\Mods\FFWMorePlayers\Scripts\main.lua"
-    $pakDir = Join-Path $moreExtract "FarFarWest\Content\Paks\~mods"
-    $requiredMoreFiles = @(
-        $mainLua,
-        (Join-Path $pakDir "ZZZ_FFWMorePlayers_P.pak"),
-        (Join-Path $pakDir "ZZZ_FFWMorePlayers_P.ucas"),
-        (Join-Path $pakDir "ZZZ_FFWMorePlayers_P.utoc")
-    )
-    foreach ($required in $requiredMoreFiles) {
-        if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
-            throw "Updated More Players archive is incomplete: $required"
-        }
-    }
-
-    $internalLine = Select-String -LiteralPath $mainLua -Pattern '^local MOD_VERSION\s*=\s*"([^"]+)"' | Select-Object -First 1
-    $maxLine = Select-String -LiteralPath $mainLua -Pattern "^local TARGET_MAX_PLAYERS\s*=\s*(\d+)" | Select-Object -First 1
-    if (-not $internalLine -or -not $maxLine) {
-        throw "Unable to read More Players version/max player fields."
-    }
-
-    $lock.morePlayers.displayVersion = $MorePlayersVersion
-    $lock.morePlayers.internalLuaVersion = $internalLine.Matches[0].Groups[1].Value
-    $lock.morePlayers.defaultMaxPlayers = [int]$maxLine.Matches[0].Groups[1].Value
-    $lock.morePlayers.expectedArchiveSha256 = Get-Sha256 -Path $moreArchivePath
-}
-
 Write-JsonFile -Value $lock -Path (Join-Path $projectRoot "config\upstream.lock.json")
 
 [pscustomobject]@{
@@ -179,7 +133,8 @@ Write-JsonFile -Value $lock -Path (Join-Path $projectRoot "config\upstream.lock.
     engineOverride = "$($lock.target.unrealEngineMajor).$($lock.target.unrealEngineMinor)"
     gameProductVersion = $lock.target.productVersion
     gameExecutableSha256 = $lock.target.executableSha256
-    morePlayersVersion = $lock.morePlayers.displayVersion
-    morePlayersSha256 = $lock.morePlayers.expectedArchiveSha256
+    modId = $mod.id
+    modVersion = $mod.version
+    modSourceTreeSha256 = Get-DirectoryTreeSha256 -Path (Join-Path $projectRoot ("src\" + $mod.sourceDirectory.Replace("/", "\")))
     runtimeTested = $false
 }

@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Get-ModkitRoot
 $lock = Get-LockData -ProjectRoot $projectRoot
+$mod = Get-ModData -ProjectRoot $projectRoot
 $failures = [Collections.Generic.List[string]]::new()
 $checks = 0
 
@@ -29,6 +30,7 @@ function Assert-ProjectCheck {
 $requiredFiles = @(
     ".gitignore",
     ".gitattributes",
+    "Install-Mod.ps1",
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
@@ -38,6 +40,9 @@ $requiredFiles = @(
     "config\static-signatures\FName_Constructor.lua",
     "config\ue4ss\UE4SS_Signatures\GNatives.lua",
     "config\ue4ss\UE4SS_Signatures\ProcessLocalScriptFunction.lua",
+    "src\mod.json",
+    "src\Mods\FFWFrostburn8\enabled.txt",
+    "src\Mods\FFWFrostburn8\Scripts\main.lua",
     "docs\UPDATE_GUIDE.md",
     "tools\Build-Release.ps1",
     "tools\Install-Release.ps1",
@@ -54,20 +59,24 @@ foreach ($relative in $requiredFiles) {
         -Message "Required file is missing: $relative"
 }
 
-Assert-ProjectCheck -Condition ($lock.schemaVersion -eq 1) -Message "Unsupported lock schema."
+Assert-ProjectCheck -Condition ($lock.schemaVersion -eq 2) -Message "Unsupported lock schema."
+Assert-ProjectCheck -Condition ($mod.schemaVersion -eq 1) -Message "Unsupported mod metadata schema."
+Assert-ProjectCheck -Condition ($mod.id -eq "FFWFrostburn8") -Message "Unexpected owned mod id."
+Assert-ProjectCheck -Condition ($mod.version -match "^\d+\.\d+\.\d+$") -Message "Mod version must use semantic versioning."
+Assert-ProjectCheck -Condition ([int]$mod.maxPlayers -eq 8) -Message "Owned mod must target eight players."
+Assert-ProjectCheck -Condition ($mod.license -eq "MIT") -Message "Owned mod source must remain MIT licensed."
+Assert-ProjectCheck -Condition ($mod.packageMode -eq "source-owned-lua" -and -not [bool]$mod.cookedAssetsIncluded) `
+    -Message "The Frostburn release must contain only the owned Lua mod."
+Assert-ProjectCheck -Condition ($lock.PSObject.Properties.Name -notcontains "morePlayers") `
+    -Message "The upstream lock must not contain third-party mod metadata."
 Assert-ProjectCheck -Condition ($lock.ue4ss.commit -match "^[0-9a-f]{40}$") -Message "UE4SS commit is not a full Git hash."
 foreach ($value in @(
     $lock.target.executableSha256,
     $lock.ue4ss.assetSha256,
-    $lock.ue4ss.customConfigsSha256,
-    $lock.morePlayers.expectedArchiveSha256
+    $lock.ue4ss.customConfigsSha256
 )) {
     Assert-ProjectCheck -Condition ($value -match "^[0-9A-F]{64}$") -Message "A locked SHA-256 value is invalid: $value"
 }
-Assert-ProjectCheck -Condition (-not [bool]$lock.morePlayers.redistributable) `
-    -Message "More Players must remain marked non-redistributable."
-Assert-ProjectCheck -Condition ($lock.morePlayers.packageMode -eq "lua-only" -and -not [bool]$lock.morePlayers.cookedAssetsCompatible) `
-    -Message "Frostburn releases must stay Lua-only until the cooked assets are rebuilt for UE 5.8."
 Assert-ProjectCheck -Condition (@($lock.ue4ss.runtimeExcludedSignatures) -contains "FName_Constructor.lua") `
     -Message "The known-bad UE 5.8 FName runtime override must remain excluded."
 
@@ -113,7 +122,41 @@ if (Test-Path -LiteralPath $staticSignatureDirectory -PathType Container) {
     }
 }
 
-$parseTargets = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot "tools") -Recurse -File -Filter "*.ps1")
+$sourceRoot = Join-Path $projectRoot "src"
+$sourceMod = $null
+try {
+    $sourceMod = Assert-PathInside `
+        -Root $sourceRoot `
+        -Path (Join-Path $sourceRoot $mod.sourceDirectory.Replace("/", "\"))
+    $checks++
+} catch {
+    $failures.Add("Invalid mod source path: $($_.Exception.Message)")
+}
+if ($sourceMod -and (Test-Path -LiteralPath $sourceMod -PathType Container)) {
+    $mainLuaPath = Join-Path $sourceMod "Scripts\main.lua"
+    if (Test-Path -LiteralPath $mainLuaPath -PathType Leaf) {
+        $mainLua = Get-Content -LiteralPath $mainLuaPath -Raw
+        $versionPattern = '(?m)^local MOD_VERSION\s*=\s*"' + [regex]::Escape([string]$mod.version) + '"\s*$'
+        $maxPattern = '(?m)^local TARGET_MAX_PLAYERS\s*=\s*' + [regex]::Escape([string]$mod.maxPlayers) + '\s*$'
+        Assert-ProjectCheck -Condition ($mainLua -match $versionPattern) `
+            -Message "Lua MOD_VERSION does not match src/mod.json."
+        Assert-ProjectCheck -Condition ($mainLua -match $maxPattern) `
+            -Message "Lua TARGET_MAX_PLAYERS does not match src/mod.json."
+        Assert-ProjectCheck -Condition ($mainLua -notmatch '(?i)FFWMorePlayers|Nexus') `
+            -Message "Owned Lua source contains a forbidden third-party mod reference."
+        try {
+            Get-DirectoryTreeSha256 -Path $sourceMod | Out-Null
+            $checks++
+        } catch {
+            $failures.Add("Unable to hash the owned mod source: $($_.Exception.Message)")
+        }
+    }
+}
+
+$parseTargets = @(
+    Get-Item -LiteralPath (Join-Path $projectRoot "Install-Mod.ps1")
+    Get-ChildItem -LiteralPath (Join-Path $projectRoot "tools") -Recurse -File -Filter "*.ps1"
+)
 foreach ($scriptFile in $parseTargets) {
     $tokens = $null
     $parseErrors = $null
@@ -135,8 +178,12 @@ $sourceFiles = @(Get-ChildItem -LiteralPath $projectRoot -Recurse -File | Where-
 $forbiddenExtensions = @(".7z", ".zip", ".pak", ".ucas", ".utoc")
 foreach ($file in $sourceFiles) {
     Assert-ProjectCheck -Condition ($forbiddenExtensions -notcontains $file.Extension.ToLowerInvariant()) `
-        -Message "Third-party/generated archive must not be committed: $(Get-RelativePath -Root $projectRoot -Path $file.FullName)"
+        -Message "Generated binary/archive must not be committed: $(Get-RelativePath -Root $projectRoot -Path $file.FullName)"
 }
+
+$buildScript = Get-Content -LiteralPath (Join-Path $projectRoot "tools\Build-Release.ps1") -Raw
+Assert-ProjectCheck -Condition ($buildScript -notmatch '(?i)MorePlayersArchive|Nexus') `
+    -Message "Build-Release.ps1 still depends on a downloaded third-party mod archive."
 
 $result = [pscustomobject]@{
     passed = $failures.Count -eq 0

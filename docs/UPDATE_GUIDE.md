@@ -1,121 +1,104 @@
 # Updating after a Far Far West patch
 
-This workflow deliberately separates discovery, compatibility validation,
-packaging, and installation. Never use the game itself as the first test.
+This project owns its multiplayer Lua source. Updating it never requires a
+download from a third-party mod page.
 
-## 1. Record the new game build
+## 1. Record and scan the new game build
 
-Allow Steam to finish updating, then close the game. Run:
+Let Steam finish updating, close the game, and run:
 
 ```powershell
 pwsh -NoProfile -File .\tools\Test-Compatibility.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
-A changed executable hash is expected after a patch. Signature results are the
-important gate:
+A changed executable hash is normal after a patch. Every signature must still
+have exactly one match. Zero means the implementation changed; more than one
+means the pattern is ambiguous. Do not package or install either case.
 
-- Exactly one match: the signature is still structurally valid.
-- Zero matches: the function changed and the signature must be regenerated.
-- More than one match: the signature is ambiguous and must be extended.
+`config/static-signatures/FName_Constructor.lua` is scan-only. Keep it out of
+the runtime signature directory unless a future UE4SS build is proven to accept
+that override.
 
-Do not build or install when any signature is not unique.
-
-`config/static-signatures/FName_Constructor.lua` is deliberately scan-only.
-Do not move it into the packaged `UE4SS_Signatures` directory unless a runtime
-test proves that a future UE4SS build accepts the override. UE4SS 1109 must use
-its integrated FName scanner for the Frostburn build.
-
-## 2. Refresh official UE4SS
+## 2. Refresh official UE4SS and lock the game
 
 ```powershell
 pwsh -NoProfile -File .\tools\Refresh-Upstream.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
-The script:
+The script downloads official UE4SS release/config assets, verifies their
+published SHA-256 values, scans the staged signatures against the local game,
+and updates `config/upstream.lock.json`. Review every resulting diff.
 
-1. Reads the current official experimental release.
-2. Downloads the basic UE4SS and custom-config assets.
-3. Verifies GitHub-provided SHA-256 digests.
-4. Stages the Far Far West config.
-5. Checks staged AOB signatures against the local executable.
-6. Updates tracked config and `upstream.lock.json` only after validation passes.
+## 3. Review reflected multiplayer paths
 
-## 3. Update More Players metadata
+The owned source lives at
+`src/Mods/FFWFrostburn8/Scripts/main.lua`. After a game update, inspect a fresh
+runtime log for these items:
 
-Download a new More Players archive from Nexus. Do not commit it.
+- `CapWrite source=GameSession ... AFTER=8`;
+- `CapWrite source=Manager ... AFTER=8`;
+- at least one `NativeHook registered` line;
+- after creating a room, `SessionParamWrite ... WRITE=true AFTER=8`.
 
-```powershell
-pwsh -NoProfile -File .\tools\Refresh-Upstream.ps1 `
-  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
-  -MorePlayersArchive "C:\path\to\new-file.7z" `
-  -MorePlayersVersion "NEW_VERSION"
-```
+If the game renames a function or capacity field, add its exact reflected path
+or exact field name only after confirming its meaning. Keep discovery
+fail-closed; never replace an arbitrary small integer just because it currently
+equals four.
 
-Review the mod's `main.lua` and confirm the intended
-`TARGET_MAX_PLAYERS`. The build script also checks that the archive contains
-the Lua folder and the complete PAK/UCAS/UTOC triple.
+Update `src/mod.json` and the `MOD_VERSION` constant together when the owned mod
+changes.
 
-## 4. Build without installing
-
-```powershell
-pwsh -NoProfile -File .\tools\Build-Release.ps1 `
-  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
-  -MorePlayersArchive "C:\path\to\downloaded-more-players.7z"
-```
-
-The result is written under `dist/`. The builder expands the final ZIP again
-and compares every file hash with the staging tree.
-
-The current Frostburn release is intentionally Lua-only. Do not add the Nexus
-PAK/UCAS/UTOC files back to the package: isolated runtime tests show that those
-pre-update cooked assets crash UE 5.8 before a lobby can be used. Re-enable them
-only after rebuilding from the original Unreal project with the current engine
-and completing a clean startup test.
-
-## 5. Review and commit
+## 4. Validate and build without installing
 
 ```powershell
 pwsh -NoProfile -File .\tools\Test-Project.ps1
-git diff
-git add config docs tools CHANGELOG.md README.md
-git commit -m "Update compatibility for Far Far West BUILD"
-```
-
-Never use `git add -f` for `vendor/`, `work/`, `dist/`, or
-`artifacts/`.
-
-## 6. Install after closing the game
-
-```powershell
-pwsh -NoProfile -File .\tools\Install-Release.ps1 `
-  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
-  -Archive ".\dist\THE-BUILT-PACKAGE.zip"
-```
-
-The installer refuses to continue if the game process exists and creates a
-dated backup before replacing UE4SS.
-
-## Runtime verification performed by a player
-
-Runtime testing is intentionally outside the automated update process. After a
-human launches the game, run:
-
-```powershell
-pwsh -NoProfile -File .\tools\Test-RuntimeLog.ps1 `
+pwsh -NoProfile -File .\tools\Build-Release.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
-The report checks that:
+The builder copies the tracked `src/` tree, records its deterministic tree hash,
+creates a release under `dist/`, expands it again, and verifies every file. A
+release containing PAK, UCAS, or UTOC files is rejected.
 
-- `ue4ss/UE4SS.log` reaches `Event loop start`.
-- The log contains `[FFWMorePlayers v...] Mod loaded`.
-- The log contains `Target MaxPlayers=8`.
+`Install-Release.ps1` is an internal primitive and requires the expected SHA-256
+of its ZIP. The public `Install-Mod.ps1` command supplies that value directly
+from the just-built package so a file cannot change between build and install.
 
-If the game build exposes its in-game console, `FFW_Settings` prints the active
-scaling values. The definitive multiplayer check is to host a lobby and confirm
-that a fifth player can join; repeat up to eight if enough testers are available.
+## 5. Install and perform a clean startup test
 
-If startup fails, restore the most recent backup and attach the UE4SS log and
-crash dump to the issue. Do not keep retrying an ambiguous signature.
+With the game closed, the public one-command path is:
+
+```powershell
+pwsh -NoProfile -File .\Install-Mod.ps1
+```
+
+The installer takes a dated backup and refuses to write if the game is running.
+Launch the game normally, wait for the title screen, then run:
+
+```powershell
+pwsh -NoProfile -File .\tools\Test-RuntimeLog.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
+  -RequireCurrentSession
+```
+
+Core startup can be automated, but multiplayer capacity cannot be honestly
+proven with one client. Create a hosted room, confirm
+`sessionParameterApplied=true`, then have a fifth real player join. Test all
+eight clients before labeling a release fully verified for eight players.
+
+If startup fails, close the game and restore the dated backup. Attach the fresh
+UE4SS log and crash dump to the issue instead of repeatedly launching with a
+failed or ambiguous signature.
+
+## 6. Commit source changes
+
+```powershell
+git diff
+git add src config docs tools Install-Mod.ps1 README.md CHANGELOG.md THIRD_PARTY_NOTICES.md
+git commit -m "Update FFWFrostburn8 for Far Far West BUILD"
+```
+
+Do not force-add ignored content from `vendor/`, `work/`, `dist/`, or
+`artifacts/`.

@@ -18,6 +18,19 @@ function Get-LockData {
     return Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
 }
 
+function Get-ModData {
+    param(
+        [string]$ProjectRoot = (Get-ModkitRoot)
+    )
+
+    $path = Join-Path $ProjectRoot "src\mod.json"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Mod metadata not found: $path"
+    }
+
+    return Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+}
+
 function Get-Sha256 {
     param(
         [Parameter(Mandatory)]
@@ -46,6 +59,39 @@ function Assert-Sha256 {
     }
 
     return $actual
+}
+
+function Get-DirectoryTreeSha256 {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    $root = [IO.Path]::GetFullPath($Path).TrimEnd("\")
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+        throw "Directory not found: $root"
+    }
+
+    $records = @(Get-ChildItem -LiteralPath $root -Recurse -File | ForEach-Object {
+        $relative = Get-RelativePath -Root $root -Path $_.FullName
+        $normalized = $relative.Replace("\", "/")
+        [pscustomobject]@{
+            Relative = $normalized
+            Record = "$normalized`0$(Get-Sha256 -Path $_.FullName)"
+        }
+    } | Sort-Object -Property Relative | Select-Object -ExpandProperty Record)
+
+    if ($records.Count -eq 0) {
+        throw "Cannot hash an empty directory: $root"
+    }
+
+    $payload = [Text.Encoding]::UTF8.GetBytes([string]::Join("`n", $records))
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($hasher.ComputeHash($payload))).Replace("-", "")
+    } finally {
+        $hasher.Dispose()
+    }
 }
 
 function Assert-PathInside {
@@ -199,70 +245,6 @@ function Expand-ZipSafe {
     }
 }
 
-function Expand-SevenZipSafe {
-    param(
-        [Parameter(Mandatory)]
-        [string]$Archive,
-
-        [Parameter(Mandatory)]
-        [string]$Destination,
-
-        [Parameter(Mandatory)]
-        [string]$SafetyRoot
-    )
-
-    $destinationPath = Assert-PathInside -Root $SafetyRoot -Path $Destination
-    if (Test-Path -LiteralPath $destinationPath) {
-        $existing = Get-ChildItem -LiteralPath $destinationPath -Force
-        if ($existing) {
-            throw "7z destination must be empty: $destinationPath"
-        }
-    } else {
-        New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
-    }
-
-    $entries = & tar.exe -tf $Archive
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to list archive: $Archive"
-    }
-
-    foreach ($entry in $entries) {
-        if (-not (Test-ArchiveEntrySafe -Entry $entry)) {
-            throw "Unsafe 7z entry: $entry"
-        }
-    }
-
-    & tar.exe -xf $Archive -C $destinationPath
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to extract archive: $Archive"
-    }
-}
-
-function Expand-ThirdPartyArchiveSafe {
-    param(
-        [Parameter(Mandatory)]
-        [string]$Archive,
-
-        [Parameter(Mandatory)]
-        [string]$Destination,
-
-        [Parameter(Mandatory)]
-        [string]$SafetyRoot
-    )
-
-    switch ([IO.Path]::GetExtension($Archive).ToLowerInvariant()) {
-        ".zip" {
-            Expand-ZipSafe -Archive $Archive -Destination $Destination -SafetyRoot $SafetyRoot
-        }
-        ".7z" {
-            Expand-SevenZipSafe -Archive $Archive -Destination $Destination -SafetyRoot $SafetyRoot
-        }
-        default {
-            throw "Unsupported archive type. Use .zip or .7z: $Archive"
-        }
-    }
-}
-
 function Find-GitHubReleaseAsset {
     param(
         [Parameter(Mandatory)]
@@ -359,6 +341,101 @@ function Get-GameExecutable {
     }
 
     return $exe
+}
+
+function Resolve-FarFarWestGameRoot {
+    param(
+        [string]$GameRoot,
+
+        [object]$Lock = (Get-LockData)
+    )
+
+    if ($GameRoot) {
+        $explicitRoot = [IO.Path]::GetFullPath($GameRoot).TrimEnd("\")
+        Get-GameExecutable -GameRoot $explicitRoot -Lock $Lock | Out-Null
+        return $explicitRoot
+    }
+
+    $steamRoots = [Collections.Generic.List[string]]::new()
+    foreach ($registryPath in @(
+        "HKCU:\Software\Valve\Steam",
+        "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam",
+        "HKLM:\SOFTWARE\Valve\Steam"
+    )) {
+        try {
+            $properties = Get-ItemProperty -LiteralPath $registryPath -ErrorAction Stop
+            foreach ($propertyName in @("SteamPath", "InstallPath")) {
+                $property = $properties.PSObject.Properties[$propertyName]
+                $value = if ($property) { $property.Value } else { $null }
+                if ($value) {
+                    $steamRoots.Add([IO.Path]::GetFullPath([string]$value))
+                }
+            }
+        } catch {
+            # Steam may not have this registry view; continue with the other sources.
+        }
+    }
+    foreach ($fallback in @(
+        "C:\Program Files (x86)\Steam",
+        "C:\Program Files\Steam"
+    )) {
+        if (Test-Path -LiteralPath $fallback -PathType Container) {
+            $steamRoots.Add($fallback)
+        }
+    }
+
+    $libraries = [Collections.Generic.List[string]]::new()
+    foreach ($steamRoot in @($steamRoots | Select-Object -Unique)) {
+        $libraries.Add($steamRoot)
+        $vdfPath = Join-Path $steamRoot "steamapps\libraryfolders.vdf"
+        if (-not (Test-Path -LiteralPath $vdfPath -PathType Leaf)) {
+            continue
+        }
+
+        $vdf = Get-Content -LiteralPath $vdfPath -Raw
+        $matches = [regex]::Matches(
+            $vdf,
+            '(?m)^\s*(?:"path"|"\d+")\s+"([^"]+)"\s*$'
+        )
+        foreach ($match in $matches) {
+            $library = $match.Groups[1].Value.Replace('\\', '\')
+            if (Test-Path -LiteralPath $library -PathType Container) {
+                $libraries.Add([IO.Path]::GetFullPath($library))
+            }
+        }
+    }
+
+    $candidates = [Collections.Generic.List[string]]::new()
+    foreach ($library in @($libraries | Select-Object -Unique)) {
+        $manifestPath = Join-Path $library "steamapps\appmanifest_3124540.acf"
+        if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+            continue
+        }
+
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw
+        $installMatch = [regex]::Match($manifest, '"installdir"\s+"([^"]+)"')
+        if (-not $installMatch.Success) {
+            continue
+        }
+
+        $candidate = Join-Path $library ("steamapps\common\" + $installMatch.Groups[1].Value)
+        try {
+            Get-GameExecutable -GameRoot $candidate -Lock $Lock | Out-Null
+            $candidates.Add([IO.Path]::GetFullPath($candidate).TrimEnd("\"))
+        } catch {
+            # Ignore stale Steam library entries.
+        }
+    }
+
+    $resolved = @($candidates | Select-Object -Unique)
+    if ($resolved.Count -eq 1) {
+        return $resolved[0]
+    }
+    if ($resolved.Count -gt 1) {
+        throw "Multiple Far Far West installations were found. Pass -GameRoot explicitly: $($resolved -join ', ')"
+    }
+
+    throw "Far Far West was not found in the registered Steam libraries. Pass -GameRoot explicitly."
 }
 
 function Read-LuaAobPattern {
