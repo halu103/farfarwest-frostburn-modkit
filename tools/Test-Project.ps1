@@ -32,6 +32,7 @@ $requiredFiles = @(
     ".gitattributes",
     "Install-Mod.ps1",
     "README.md",
+    "docs\POWERSHELL.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "CHANGELOG.md",
@@ -59,11 +60,27 @@ foreach ($relative in $requiredFiles) {
         -Message "Required file is missing: $relative"
 }
 
+$readmePath = Join-Path $projectRoot "README.md"
+$powershellGuidePath = Join-Path $projectRoot "docs\POWERSHELL.md"
+if ((Test-Path -LiteralPath $readmePath -PathType Leaf) -and
+    (Test-Path -LiteralPath $powershellGuidePath -PathType Leaf)) {
+    $powerShellDocs = (Get-Content -LiteralPath $readmePath -Raw) + "`n" +
+        (Get-Content -LiteralPath $powershellGuidePath -Raw)
+    Assert-ProjectCheck -Condition ($powerShellDocs -match 'powershell\.exe') `
+        -Message "Public documentation is missing the Windows PowerShell 5.1 command."
+    Assert-ProjectCheck -Condition ($powerShellDocs -match 'pwsh\.exe') `
+        -Message "Public documentation is missing the PowerShell 7+ command."
+    Assert-ProjectCheck -Condition ($powerShellDocs -match '\$PSVersionTable\.PSEdition') `
+        -Message "Public documentation is missing PowerShell edition detection."
+}
+
 Assert-ProjectCheck -Condition ($lock.schemaVersion -eq 2) -Message "Unsupported lock schema."
 Assert-ProjectCheck -Condition ($mod.schemaVersion -eq 1) -Message "Unsupported mod metadata schema."
 Assert-ProjectCheck -Condition ($mod.id -eq "FFWFrostburn8") -Message "Unexpected owned mod id."
 Assert-ProjectCheck -Condition ($mod.version -match "^\d+\.\d+\.\d+$") -Message "Mod version must use semantic versioning."
 Assert-ProjectCheck -Condition ([int]$mod.maxPlayers -eq 8) -Message "Owned mod must target eight players."
+Assert-ProjectCheck -Condition ([int]$mod.sessionRows -eq 8) -Message "Session UI must target eight rows."
+Assert-ProjectCheck -Condition ([int]$mod.soloInviteSlots -eq 7) -Message "Solo host UI must target seven invite slots."
 Assert-ProjectCheck -Condition ($mod.license -eq "MIT") -Message "Owned mod source must remain MIT licensed."
 Assert-ProjectCheck -Condition ($mod.packageMode -eq "source-owned-lua" -and -not [bool]$mod.cookedAssetsIncluded) `
     -Message "The Frostburn release must contain only the owned Lua mod."
@@ -142,6 +159,12 @@ if ($sourceMod -and (Test-Path -LiteralPath $sourceMod -PathType Container)) {
             -Message "Lua MOD_VERSION does not match src/mod.json."
         Assert-ProjectCheck -Condition ($mainLua -match $maxPattern) `
             -Message "Lua TARGET_MAX_PLAYERS does not match src/mod.json."
+        Assert-ProjectCheck -Condition ($mainLua -match 'UI_Menu_Container_CurrentSession' -and $mainLua -match 'VerticalBox_Players') `
+            -Message "Owned Lua source is missing the current-session UI expansion."
+        Assert-ProjectCheck -Condition ($mainLua -match 'UI_Menu_Button_Session_Invite') `
+            -Message "Owned Lua source is missing the Frostburn invite-row widget class."
+        Assert-ProjectCheck -Condition ($mainLua -match 'SessionUi .*READY=%s') `
+            -Message "Owned Lua source is missing the verified Session UI runtime marker."
         Assert-ProjectCheck -Condition ($mainLua -notmatch '(?i)FFWMorePlayers|Nexus') `
             -Message "Owned Lua source contains a forbidden third-party mod reference."
         try {

@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.1.2 - 2026-09-04
+
+- Recognize Frostburn's live `UI_Menu_Button_Session_Invite_C` rows and clone
+  that exact runtime widget when expanding Current Session to eight rows.
+- Keep compatibility recognition for the older `UI_Menu_SessionEmptySlot`
+  naming while preferring the class observed in build `0.2.0.4 - CL 559`.
+- Document that **Allow mods** marks the room as mod-enabled but does not load
+  UE4SS or expand the interface by itself.
+- Split every public install, verification, and restore example between
+  Windows PowerShell 5.1 (`powershell.exe`) and PowerShell 7+ (`pwsh.exe`).
+
+## 1.1.1 - 2026-09-04
+
+- Added periodic discovery for the Current Session widget because Frostburn can
+  construct it before the UE4SS object notification becomes observable.
+- Added fail-closed diagnostics for every child class in
+  `VerticalBox_Players`, allowing UI changes in future game updates to be
+  identified without guessing or mutating an unknown layout.
+
+## 1.1.0 - 2026-09-03
+
+- Expanded `UI_Menu_Container_CurrentSession.VerticalBox_Players` from four to
+  eight live rows using the game's current Frostburn empty-slot widget.
+- Added seven visible invite rows when hosting alone, without shipping a copied
+  PAK, UCAS, UTOC, or another multiplayer mod.
+- Added fail-closed child-type checks so a future incompatible lobby layout is
+  logged instead of being modified blindly.
+- Added runtime evidence for the eight-row Session UI and a strict
+  `-RequireSessionUi` verification mode.
+
 ## 1.0.0 - 2026-09-02
 
 - Replaced the downloaded multiplayer-mod input with the independently written,

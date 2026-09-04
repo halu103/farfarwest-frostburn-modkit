@@ -3,12 +3,35 @@
 This project owns its multiplayer Lua source. Updating it never requires a
 download from a third-party mod page.
 
+## Select the PowerShell edition
+
+Windows PowerShell 5.1 and PowerShell 7+ are separate programs. Check the
+current terminal with `$PSVersionTable.PSEdition` and
+`$PSVersionTable.PSVersion`, then run only the matching command shown in each
+step:
+
+- `Desktop 5.1`: use `powershell.exe`;
+- `Core 7.x`: use `pwsh.exe` (recommended for maintenance and downloads).
+
+Both editions are tested by the project. PowerShell 4 and earlier and
+PowerShell 6 are not supported. See [PowerShell compatibility](POWERSHELL.md)
+for troubleshooting.
+
 ## 1. Record and scan the new game build
 
-Let Steam finish updating, close the game, and run:
+Let Steam finish updating, close the game, and run the matching command.
+
+Windows PowerShell 5.1:
 
 ```powershell
-pwsh -NoProfile -File .\tools\Test-Compatibility.ps1 `
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-Compatibility.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-Compatibility.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
@@ -22,8 +45,17 @@ that override.
 
 ## 2. Refresh official UE4SS and lock the game
 
+Windows PowerShell 5.1:
+
 ```powershell
-pwsh -NoProfile -File .\tools\Refresh-Upstream.ps1 `
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Refresh-Upstream.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Refresh-Upstream.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
@@ -52,9 +84,19 @@ changes.
 
 ## 4. Validate and build without installing
 
+Windows PowerShell 5.1:
+
 ```powershell
-pwsh -NoProfile -File .\tools\Test-Project.ps1
-pwsh -NoProfile -File .\tools\Build-Release.ps1 `
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-Project.ps1
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-Release.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-Project.ps1
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-Release.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
@@ -68,19 +110,41 @@ from the just-built package so a file cannot change between build and install.
 
 ## 5. Install and perform a clean startup test
 
-With the game closed, the public one-command path is:
+With the game closed, use only the public one-command path matching the
+installed PowerShell edition.
+
+Windows PowerShell 5.1:
 
 ```powershell
-pwsh -NoProfile -File .\Install-Mod.ps1
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1
 ```
 
 The installer takes a dated backup and refuses to write if the game is running.
-Launch the game normally, wait for the title screen, then run:
+Launch the game normally, create a room with **Allow mods** enabled, open
+**Current Session**, then run the matching verification command.
+
+Windows PowerShell 5.1:
 
 ```powershell
-pwsh -NoProfile -File .\tools\Test-RuntimeLog.ps1 `
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLog.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
-  -RequireCurrentSession
+  -RequireCurrentSession `
+  -RequireSessionUi
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLog.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
+  -RequireCurrentSession `
+  -RequireSessionUi
 ```
 
 Core startup can be automated, but multiplayer capacity cannot be honestly

@@ -13,16 +13,48 @@ Current baseline:
 - Far Far West: `0.2.0.4 - CL 559`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- Owned mod: `FFWFrostburn8 v1.0.0` (MIT)
+- Owned mod: `FFWFrostburn8 v1.1.2` (MIT)
 - Target capacity: `8`
+- Session UI: `1 host + 7 invite slots` when hosting alone
 - Package mode: source-owned Lua only
+
+## Choose the correct PowerShell command
+
+This Windows project is tested with both Windows PowerShell 5.1 and PowerShell
+7+. They are different programs and use different executable names. In the
+PowerShell window that you intend to use, check the edition first:
+
+```powershell
+$PSVersionTable.PSEdition
+$PSVersionTable.PSVersion
+```
+
+- `Desktop` and version `5.1` means **Windows PowerShell**; use
+  `powershell.exe`.
+- `Core` and version `7.x` means **PowerShell 7+**; use `pwsh.exe`.
+- If `pwsh.exe` is not recognized, it is not installed or is not on `PATH`; use
+  the Windows PowerShell 5.1 command instead.
+- PowerShell 4 and earlier, PowerShell 6, Linux, and macOS are not supported.
+
+Run only the command for the edition you have. The `-ExecutionPolicy Bypass`
+option applies only to that new process and does not permanently change the
+computer's execution policy.
 
 ## Install with one command
 
-Close Far Far West, open PowerShell in this repository, and run:
+Close Far Far West and open the repository folder in the matching PowerShell
+edition.
+
+Windows PowerShell 5.1:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1
 ```
 
 The command automatically finds the Steam installation, validates the exact
@@ -35,12 +67,25 @@ It never starts, closes, or restarts the game. It refuses to write while
 access is needed only on the first build when the verified official UE4SS ZIP
 is not present under the ignored `vendor/cache/` directory.
 
-If automatic Steam discovery is not available, pass the game path:
+If automatic Steam discovery is not available, pass the game path. Use only
+the command matching your edition.
+
+Windows PowerShell 5.1:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1 `
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\Install-Mod.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+See [PowerShell compatibility](docs/POWERSHELL.md) for terminal detection,
+common command-not-found and TLS errors, and matching verify/restore commands.
 
 ## What the mod changes
 
@@ -51,6 +96,16 @@ the three layers used by the current game:
 2. `BP_Manager_Multiplayer_C.MaxPlayers` before a room is created;
 3. native create/update-session capacity parameters discovered from reflected
    Unreal metadata.
+
+It also expands the current-session player list at runtime from four rows to
+eight. When the host is alone, that means one host row plus seven clickable
+invite rows. The extra rows are created from the game's current Frostburn
+`UI_Menu_Button_Session_Invite` widget, so no copied or stale cooked UI asset is
+required.
+
+When creating a network room, tick **Allow mods** before choosing the room
+type. This marks the room as mod-enabled for other clients; it does not itself
+load UE4SS or change the four-row interface.
 
 The native hook discovery is fail-closed: only exact capacity field names such
 as `MaxPlayers`, `NumPublicConnections`, and `PublicConnections` are changed.
@@ -64,12 +119,24 @@ existing copies in its backup.
 
 ## Verify the installation
 
-After launching the game normally, run:
+After launching the game normally, run the matching command.
+
+Windows PowerShell 5.1:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLog.ps1 `
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLog.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
-  -RequireCurrentSession
+  -RequireCurrentSession `
+  -RequireSessionUi
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLog.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
+  -RequireCurrentSession `
+  -RequireSessionUi
 ```
 
 A passing core report proves that UE4SS and the owned mod loaded without known
@@ -80,6 +147,9 @@ report separately exposes:
 - `nativeSessionHookReady`: a current session create/update hook is attached;
 - `sessionParameterApplied`: a create/update-session call actually passed
   through a native hook and its capacity was changed to eight;
+- `sessionUiExpanded`: the current Session list was rebuilt to eight rows;
+- `maximumInviteSlotsObserved`: largest number of invite rows verified in the
+  current log; this is `7` when the host is alone;
 - `maximumObservedPlayers`: largest real `PlayerArray` seen in the log;
 - `networkCapacityTested`: at least a fifth real player joined;
 - `fullEightPlayerSessionTested`: eight real players were observed together.
@@ -93,10 +163,21 @@ status to `ue4ss/UE4SS.log`.
 
 ## Restore a backup
 
-Close the game and use the backup path printed by the installer:
+Close the game and use the backup path printed by the installer. Use only the
+command matching your edition.
+
+Windows PowerShell 5.1:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Restore-Backup.ps1 `
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Restore-Backup.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
+  -BackupDirectory ".\artifacts\backups\INSTALL-TIMESTAMP"
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Restore-Backup.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
   -BackupDirectory ".\artifacts\backups\INSTALL-TIMESTAMP"
 ```
@@ -110,6 +191,7 @@ config/ue4ss/                Tracked Far Far West UE4SS compatibility config
 config/static-signatures/    Read-only compatibility sentinels
 Install-Mod.ps1              One-command build, backup, and installer
 tools/                       Build, validation, runtime, and restore tooling
+docs/POWERSHELL.md           Commands for Windows PowerShell 5.1 and PowerShell 7+
 docs/UPDATE_GUIDE.md         Maintainer workflow after a game update
 ```
 
