@@ -104,14 +104,37 @@ The builder copies the tracked `src/` tree, records its deterministic tree hash,
 creates a release under `dist/`, expands it again, and verifies every file. A
 release containing PAK, UCAS, or UTOC files is rejected.
 
+Build the distributable one-click installer after the source release passes.
+This embeds the exact verified ZIP and runs only a read-only EXE smoke test; it
+does not install or launch the game.
+
+Windows PowerShell 5.1:
+
+```powershell
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-InstallerExe.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-InstallerExe.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+Record and publish the resulting EXE's SHA-256. Local builds are unsigned; a
+public release should be Authenticode-signed when a trusted certificate is
+available.
+
 `Install-Release.ps1` is an internal primitive and requires the expected SHA-256
 of its ZIP. The public `Install-Mod.ps1` command supplies that value directly
 from the just-built package so a file cannot change between build and install.
 
 ## 5. Install and perform a clean startup test
 
-With the game closed, use only the public one-command path matching the
-installed PowerShell edition.
+With the game closed, use the generated `Setup.exe` for the normal player path.
+PowerShell remains available as the source-tree fallback below; use only the
+command matching the installed edition.
 
 Windows PowerShell 5.1:
 
@@ -160,7 +183,7 @@ failed or ambiguous signature.
 
 ```powershell
 git diff
-git add src config docs tools Install-Mod.ps1 README.md CHANGELOG.md THIRD_PARTY_NOTICES.md
+git add src config docs installer tools Install-Mod.ps1 README.md CHANGELOG.md THIRD_PARTY_NOTICES.md
 git commit -m "Update FFWFrostburn8 for Far Far West BUILD"
 ```
 

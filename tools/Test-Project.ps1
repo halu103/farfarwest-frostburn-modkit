@@ -32,6 +32,7 @@ $requiredFiles = @(
     ".gitattributes",
     "Install-Mod.ps1",
     "README.md",
+    "docs\INSTALLER.md",
     "docs\POWERSHELL.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
@@ -45,11 +46,15 @@ $requiredFiles = @(
     "src\Mods\FFWFrostburn8\enabled.txt",
     "src\Mods\FFWFrostburn8\Scripts\main.lua",
     "docs\UPDATE_GUIDE.md",
+    "installer\Installer.cs",
+    "installer\app.manifest",
+    "tools\Build-InstallerExe.ps1",
     "tools\Build-Release.ps1",
     "tools\Install-Release.ps1",
     "tools\Refresh-Upstream.ps1",
     "tools\Restore-Backup.ps1",
     "tools\Test-Compatibility.ps1",
+    "tools\Test-InstallerExe.ps1",
     "tools\Test-Project.ps1",
     "tools\Test-RuntimeLog.ps1",
     "tools\lib\Common.ps1",
@@ -62,16 +67,21 @@ foreach ($relative in $requiredFiles) {
 
 $readmePath = Join-Path $projectRoot "README.md"
 $powershellGuidePath = Join-Path $projectRoot "docs\POWERSHELL.md"
+$installerGuidePath = Join-Path $projectRoot "docs\INSTALLER.md"
 if ((Test-Path -LiteralPath $readmePath -PathType Leaf) -and
-    (Test-Path -LiteralPath $powershellGuidePath -PathType Leaf)) {
+    (Test-Path -LiteralPath $powershellGuidePath -PathType Leaf) -and
+    (Test-Path -LiteralPath $installerGuidePath -PathType Leaf)) {
     $powerShellDocs = (Get-Content -LiteralPath $readmePath -Raw) + "`n" +
-        (Get-Content -LiteralPath $powershellGuidePath -Raw)
+        (Get-Content -LiteralPath $powershellGuidePath -Raw) + "`n" +
+        (Get-Content -LiteralPath $installerGuidePath -Raw)
     Assert-ProjectCheck -Condition ($powerShellDocs -match 'powershell\.exe') `
         -Message "Public documentation is missing the Windows PowerShell 5.1 command."
     Assert-ProjectCheck -Condition ($powerShellDocs -match 'pwsh\.exe') `
         -Message "Public documentation is missing the PowerShell 7+ command."
     Assert-ProjectCheck -Condition ($powerShellDocs -match '\$PSVersionTable\.PSEdition') `
         -Message "Public documentation is missing PowerShell edition detection."
+    Assert-ProjectCheck -Condition ($powerShellDocs -match '(?i)Setup\.exe') `
+        -Message "Public documentation is missing the no-PowerShell installer path."
 }
 
 Assert-ProjectCheck -Condition ($lock.schemaVersion -eq 2) -Message "Unsupported lock schema."
@@ -207,6 +217,34 @@ foreach ($file in $sourceFiles) {
 $buildScript = Get-Content -LiteralPath (Join-Path $projectRoot "tools\Build-Release.ps1") -Raw
 Assert-ProjectCheck -Condition ($buildScript -notmatch '(?i)MorePlayersArchive|Nexus') `
     -Message "Build-Release.ps1 still depends on a downloaded third-party mod archive."
+
+$installerSourcePath = Join-Path $projectRoot "installer\Installer.cs"
+$installerManifestPath = Join-Path $projectRoot "installer\app.manifest"
+$installerBuildPath = Join-Path $projectRoot "tools\Build-InstallerExe.ps1"
+if ((Test-Path -LiteralPath $installerSourcePath -PathType Leaf) -and
+    (Test-Path -LiteralPath $installerManifestPath -PathType Leaf) -and
+    (Test-Path -LiteralPath $installerBuildPath -PathType Leaf)) {
+    $installerSource = Get-Content -LiteralPath $installerSourcePath -Raw
+    $installerManifest = Get-Content -LiteralPath $installerManifestPath -Raw
+    $installerBuild = Get-Content -LiteralPath $installerBuildPath -Raw
+    Assert-ProjectCheck -Condition ($installerSource -match 'EnsureGameNotRunning') `
+        -Message "The GUI installer does not guard against an active game process."
+    Assert-ProjectCheck -Condition ($installerSource -match 'FarFarWest-Win64-Shipping' -and
+        $installerSource -match '"FarFarWest"') `
+        -Message "The GUI installer does not recognize both Far Far West process names."
+    Assert-ProjectCheck -Condition ($installerSource -match 'ReleaseSha256' -and
+        $installerSource -match 'SourceTreeSha256') `
+        -Message "The GUI installer is missing embedded-release or source-tree verification."
+    Assert-ProjectCheck -Condition ($installerSource -match 'rolled-back-after-install-error') `
+        -Message "The GUI installer is missing automatic rollback tracking."
+    Assert-ProjectCheck -Condition ($installerSource -notmatch '(?i)powershell\.exe|pwsh\.exe') `
+        -Message "The GUI installer must be native and must not wrap a PowerShell command."
+    Assert-ProjectCheck -Condition ($installerManifest -match 'requestedExecutionLevel level="asInvoker"') `
+        -Message "The GUI installer manifest must not demand elevation automatically."
+    Assert-ProjectCheck -Condition ($installerBuild -match 'FFWFrostburn8\.Payload\.zip' -and
+        $installerBuild -match '/target:winexe') `
+        -Message "Build-InstallerExe.ps1 is not embedding the offline release in a Windows GUI executable."
+}
 
 $result = [pscustomobject]@{
     passed = $failures.Count -eq 0

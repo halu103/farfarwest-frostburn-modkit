@@ -18,7 +18,29 @@ Current baseline:
 - Session UI: `1 host + 7 invite slots` when hosting alone
 - Package mode: source-owned Lua only
 
-## Choose the correct PowerShell command
+## Install with the EXE (recommended)
+
+Players do not need to type a PowerShell command. Close Far Far West,
+double-click the release file ending in `Setup.exe`, verify the automatically
+detected game folder, and click **Install / Cài**. The full package is embedded
+in the EXE, so it does not download another multiplayer mod.
+
+The installer validates the supported game build and all embedded hashes,
+creates a persistent backup, installs and verifies every managed file, and
+automatically attempts rollback on failure. It never launches, closes, or
+restarts the game and refuses to write while the game is running.
+
+Read [one-click installer details](docs/INSTALLER.md) before distribution. The
+current local build is not code-signed, so Windows may show an
+unknown-publisher warning; verify its published SHA-256 and do not disable
+Defender.
+
+## Install from source with PowerShell
+
+PowerShell is a source/maintainer fallback, not a requirement for players using
+`Setup.exe`.
+
+### Choose the correct PowerShell command
 
 This Windows project is tested with both Windows PowerShell 5.1 and PowerShell
 7+. They are different programs and use different executable names. In the
@@ -40,7 +62,7 @@ Run only the command for the edition you have. The `-ExecutionPolicy Bypass`
 option applies only to that new process and does not permanently change the
 computer's execution policy.
 
-## Install with one command
+### Install with one command
 
 Close Far Far West and open the repository folder in the matching PowerShell
 edition.
@@ -189,8 +211,11 @@ src/                         Owned mod metadata and complete Lua source
 config/upstream.lock.json    Pinned game and official UE4SS versions/hashes
 config/ue4ss/                Tracked Far Far West UE4SS compatibility config
 config/static-signatures/    Read-only compatibility sentinels
+installer/                   Native WinForms one-click installer source
 Install-Mod.ps1              One-command build, backup, and installer
-tools/                       Build, validation, runtime, and restore tooling
+tools/Build-InstallerExe.ps1 Build the offline Setup.exe
+tools/                       Remaining build, validation, runtime, and restore tooling
+docs/INSTALLER.md            One-click installation, safety, and distribution notes
 docs/POWERSHELL.md           Commands for Windows PowerShell 5.1 and PowerShell 7+
 docs/UPDATE_GUIDE.md         Maintainer workflow after a game update
 ```

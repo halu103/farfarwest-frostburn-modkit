@@ -2,6 +2,14 @@
 
 ## 1.1.2 - 2026-09-04
 
+- Added a native x64 WinForms `Setup.exe` builder with the verified release ZIP
+  embedded for one-click, offline installation without end-user PowerShell.
+- Added exact game/package/source hash checks, persistent backups, installed
+  file verification, legacy cooked-file cleanup, and automatic rollback to the
+  GUI installer. It refuses to write while Far Far West is running and never
+  launches, closes, or restarts the game.
+- Documented unsigned-build/SmartScreen limitations and separated the normal
+  EXE path from PowerShell maintainer/fallback commands.
 - Recognize Frostburn's live `UI_Menu_Button_Session_Invite_C` rows and clone
   that exact runtime widget when expanding Current Session to eight rows.
 - Keep compatibility recognition for the older `UI_Menu_SessionEmptySlot`

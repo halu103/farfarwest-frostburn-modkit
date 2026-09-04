@@ -1,5 +1,10 @@
 # PowerShell compatibility
 
+Players using the release `Setup.exe` do not need PowerShell. Double-click the
+EXE and follow the installer window; see [one-click installer](INSTALLER.md).
+The commands below are for installing from source, maintenance, verification,
+or restoring an older backup.
+
 Far Far West is a Windows game, and this modkit supports these two Windows
 PowerShell editions:
 
@@ -24,7 +29,7 @@ $PSVersionTable.PSVersion
 Use `powershell.exe` only when the result is `Desktop 5.1`. Use `pwsh.exe` when
 the result is `Core 7.x`. Do not run both installers for one update.
 
-## Install
+## Install from source
 
 First close Far Far West, then change to the repository directory.
 
