@@ -18,6 +18,17 @@ Extract that ZIP and run `FFWFrostburn8-Setup.exe`, which is immediately at the
 archive root. No source browsing and no PowerShell are required. The download
 also contains a short Vietnamese/English guide and SHA-256 checksum.
 
+## Support development
+
+If this mod is useful to you, you can support its continued maintenance:
+
+<a href="https://www.buymeacoffee.com/halu103">
+  <img
+    src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&amp;emoji=&amp;slug=halu103&amp;button_colour=FFDD00&amp;font_colour=000000&amp;font_family=Poppins&amp;outline_colour=000000&amp;coffee_colour=ffffff"
+    alt="Buy Me a Coffee"
+  />
+</a>
+
 GitHub's automatically generated **Source code (zip)** and **Source code
 (tar.gz)** files contain developer source only and are not the installer. The
 direct link above becomes available after the corresponding asset is uploaded
