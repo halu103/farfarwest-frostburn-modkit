@@ -5,6 +5,11 @@ It is a native Windows GUI application: it does not invoke PowerShell and does
 not download another multiplayer mod. The complete verified release ZIP is
 embedded in the executable.
 
+For players, publish `FFWFrostburn8-Windows-x64.zip` as a GitHub Release asset.
+That download has a flat layout, so `FFWFrostburn8-Setup.exe` is visible
+immediately after extraction. Do not direct players to GitHub's automatically
+generated source archive. See [publishing](PUBLISHING.md).
+
 ## Install without PowerShell
 
 1. Close Far Far West.

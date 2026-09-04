@@ -10,6 +10,9 @@
   launches, closes, or restarts the game.
 - Documented unsigned-build/SmartScreen limitations and separated the normal
   EXE path from PowerShell maintainer/fallback commands.
+- Added a flat, five-file Windows x64 player bundle with the installer at ZIP
+  root, round-trip hash verification, stable GitHub Release download naming,
+  and guidance that distinguishes build assets from source ZIPs.
 - Recognize Frostburn's live `UI_Menu_Button_Session_Invite_C` rows and clone
   that exact runtime widget when expanding Current Session to eight rows.
 - Keep compatibility recognition for the older `UI_Menu_SessionEmptySlot`

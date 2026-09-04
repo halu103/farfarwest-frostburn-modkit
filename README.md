@@ -8,6 +8,21 @@ The repository contains the complete Lua source for `FFWFrostburn8`. It does
 not download, copy, or package another player's-capacity mod, and it does not
 contain cooked game assets.
 
+## Download the player build
+
+**Players should use the release build, not GitHub's green `Code` button:**
+
+[Download FFWFrostburn8 for Windows x64](https://github.com/halu103/farfarwest-frostburn-modkit/releases/latest/download/FFWFrostburn8-Windows-x64.zip)
+
+Extract that ZIP and run `FFWFrostburn8-Setup.exe`, which is immediately at the
+archive root. No source browsing and no PowerShell are required. The download
+also contains a short Vietnamese/English guide and SHA-256 checksum.
+
+GitHub's automatically generated **Source code (zip)** and **Source code
+(tar.gz)** files contain developer source only and are not the installer. The
+direct link above becomes available after the corresponding asset is uploaded
+to the first GitHub Release; see [publishing a release](docs/PUBLISHING.md).
+
 Current baseline:
 
 - Far Far West: `0.2.0.4 - CL 559`
@@ -214,8 +229,10 @@ config/static-signatures/    Read-only compatibility sentinels
 installer/                   Native WinForms one-click installer source
 Install-Mod.ps1              One-command build, backup, and installer
 tools/Build-InstallerExe.ps1 Build the offline Setup.exe
+tools/Build-DownloadBundle.ps1 Build the flat player-download ZIP
 tools/                       Remaining build, validation, runtime, and restore tooling
 docs/INSTALLER.md            One-click installation, safety, and distribution notes
+docs/PUBLISHING.md           Upload the player build as GitHub Release assets
 docs/POWERSHELL.md           Commands for Windows PowerShell 5.1 and PowerShell 7+
 docs/UPDATE_GUIDE.md         Maintainer workflow after a game update
 ```

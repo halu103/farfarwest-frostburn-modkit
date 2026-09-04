@@ -126,6 +126,27 @@ Record and publish the resulting EXE's SHA-256. Local builds are unsigned; a
 public release should be Authenticode-signed when a trusted certificate is
 available.
 
+After the EXE passes the isolated install/rollback test, create the flat player
+download bundle. Run only the command matching the installed edition.
+
+Windows PowerShell 5.1:
+
+```powershell
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-DownloadBundle.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -File .\tools\Build-DownloadBundle.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+Upload the four files under `dist\release-vVERSION` as GitHub Release assets.
+Do not tell players to use **Code → Download ZIP**; that archive is source only.
+See [publishing a release](PUBLISHING.md).
+
 `Install-Release.ps1` is an internal primitive and requires the expected SHA-256
 of its ZIP. The public `Install-Mod.ps1` command supplies that value directly
 from the just-built package so a file cannot change between build and install.

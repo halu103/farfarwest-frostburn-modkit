@@ -33,6 +33,7 @@ $requiredFiles = @(
     "Install-Mod.ps1",
     "README.md",
     "docs\INSTALLER.md",
+    "docs\PUBLISHING.md",
     "docs\POWERSHELL.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
@@ -49,6 +50,7 @@ $requiredFiles = @(
     "installer\Installer.cs",
     "installer\app.manifest",
     "tools\Build-InstallerExe.ps1",
+    "tools\Build-DownloadBundle.ps1",
     "tools\Build-Release.ps1",
     "tools\Install-Release.ps1",
     "tools\Refresh-Upstream.ps1",
@@ -82,6 +84,18 @@ if ((Test-Path -LiteralPath $readmePath -PathType Leaf) -and
         -Message "Public documentation is missing PowerShell edition detection."
     Assert-ProjectCheck -Condition ($powerShellDocs -match '(?i)Setup\.exe') `
         -Message "Public documentation is missing the no-PowerShell installer path."
+}
+
+$publishingGuidePath = Join-Path $projectRoot "docs\PUBLISHING.md"
+if ((Test-Path -LiteralPath $readmePath -PathType Leaf) -and
+    (Test-Path -LiteralPath $publishingGuidePath -PathType Leaf)) {
+    $releaseDocs = (Get-Content -LiteralPath $readmePath -Raw) + "`n" +
+        (Get-Content -LiteralPath $publishingGuidePath -Raw)
+    Assert-ProjectCheck -Condition ($releaseDocs -match 'releases/latest/download/FFWFrostburn8-Windows-x64\.zip') `
+        -Message "Public documentation is missing the stable GitHub Release download link."
+    Assert-ProjectCheck -Condition ($releaseDocs -match '(?is)Code.*Download ZIP' -and
+        $releaseDocs -match '(?i)source') `
+        -Message "Documentation must distinguish GitHub's source ZIP from the player build."
 }
 
 Assert-ProjectCheck -Condition ($lock.schemaVersion -eq 2) -Message "Unsupported lock schema."
@@ -221,6 +235,7 @@ Assert-ProjectCheck -Condition ($buildScript -notmatch '(?i)MorePlayersArchive|N
 $installerSourcePath = Join-Path $projectRoot "installer\Installer.cs"
 $installerManifestPath = Join-Path $projectRoot "installer\app.manifest"
 $installerBuildPath = Join-Path $projectRoot "tools\Build-InstallerExe.ps1"
+$downloadBundlePath = Join-Path $projectRoot "tools\Build-DownloadBundle.ps1"
 if ((Test-Path -LiteralPath $installerSourcePath -PathType Leaf) -and
     (Test-Path -LiteralPath $installerManifestPath -PathType Leaf) -and
     (Test-Path -LiteralPath $installerBuildPath -PathType Leaf)) {
@@ -244,6 +259,24 @@ if ((Test-Path -LiteralPath $installerSourcePath -PathType Leaf) -and
     Assert-ProjectCheck -Condition ($installerBuild -match 'FFWFrostburn8\.Payload\.zip' -and
         $installerBuild -match '/target:winexe') `
         -Message "Build-InstallerExe.ps1 is not embedding the offline release in a Windows GUI executable."
+}
+if (Test-Path -LiteralPath $downloadBundlePath -PathType Leaf) {
+    $downloadBundle = Get-Content -LiteralPath $downloadBundlePath -Raw
+    Assert-ProjectCheck -Condition ($downloadBundle -match 'FFWFrostburn8-Windows-x64\.zip') `
+        -Message "The player bundle does not use the stable GitHub Release asset name."
+    Assert-ProjectCheck -Condition ($downloadBundle -match 'flat root layout' -and
+        $downloadBundle -match 'round-trip hash mismatch') `
+        -Message "The player bundle is missing flat-layout or round-trip verification."
+    foreach ($bundleRootName in @(
+        "FFWFrostburn8-Setup.exe",
+        "README-VI.txt",
+        "SHA256SUMS.txt",
+        "LICENSE.txt",
+        "THIRD-PARTY-NOTICES.txt"
+    )) {
+        Assert-ProjectCheck -Condition ($downloadBundle -match [regex]::Escape($bundleRootName)) `
+            -Message "The player bundle allowlist is missing: $bundleRootName"
+    }
 }
 
 $result = [pscustomobject]@{
