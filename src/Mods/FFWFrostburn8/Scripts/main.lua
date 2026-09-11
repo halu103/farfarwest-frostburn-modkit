@@ -4,13 +4,14 @@
 -- or code from another multiplayer mod.
 
 local MOD_ID = "FFWFrostburn8"
-local MOD_VERSION = "1.1.2"
+local MOD_VERSION = "1.1.3"
 local TARGET_MAX_PLAYERS = 8
 local TARGET_SESSION_ROWS = TARGET_MAX_PLAYERS
 local TAG = string.format("[%s v%s]", MOD_ID, MOD_VERSION)
 
 local CURRENT_SESSION_CLASS_PATH = "/Game/Interfaces/MainMenu/UI_Menu_Container_CurrentSession.UI_Menu_Container_CurrentSession_C"
 local INVITE_SESSION_ROW_CLASS_PATH = "/Game/Interfaces/MainMenu/UI_Menu_Button_Session_Invite.UI_Menu_Button_Session_Invite_C"
+local MEMBER_SESSION_ROW_CLASS_PATH = "/Game/Interfaces/MainMenu/UI_Menu_SessionMember.UI_Menu_SessionMember_C"
 local WIDGET_BLUEPRINT_LIBRARY_PATH = "/Script/UMG.Default__WidgetBlueprintLibrary"
 
 local trackedSessions = {}
@@ -21,16 +22,19 @@ local hookedFunctions = {}
 local describedFunctions = {}
 local reportedUiErrors = {}
 local reportedUiStates = {}
+local ownedSessionRows = {}
 local lastObservedPlayers = -1
 local sessionCapApplied = false
 local managerCapApplied = false
 local nativeHookCount = 0
 local sessionUiExpanded = false
 local maximumInviteSlotsObserved = 0
+local maximumMemberRowsObserved = 0
 local sessionUiAugmentations = 0
 local sessionUiScanTick = 0
 local widgetBlueprintLibrary = nil
 local inviteSessionRowClass = nil
+local memberSessionRowClass = nil
 
 local function log(message)
     print(string.format("%s %s\n", TAG, message))
@@ -122,8 +126,12 @@ local function inspectSessionRows(panel)
         members = 0,
         unknown = 0,
         template = nil,
+        inviteRows = {},
+        memberRows = {},
+        membersBeforeInvites = true,
         classes = {},
     }
+    local sawInvite = false
     for index = 0, total - 1 do
         local childOk, child = pcall(function()
             return panel:GetChildAt(index)
@@ -137,14 +145,45 @@ local function inspectSessionRows(panel)
             if rowType == "invite" then
                 result.invites = result.invites + 1
                 result.template = result.template or child
+                table.insert(result.inviteRows, child)
+                sawInvite = true
             elseif rowType == "member" then
                 result.members = result.members + 1
+                table.insert(result.memberRows, child)
+                if sawInvite then
+                    result.membersBeforeInvites = false
+                end
             else
                 result.unknown = result.unknown + 1
             end
         end
     end
     return result, nil
+end
+
+local function resolveMemberSessionRowClass(template)
+    if isValid(memberSessionRowClass) then
+        return memberSessionRowClass
+    end
+
+    if isValid(template) then
+        local ok, class = pcall(function()
+            return template:GetClass()
+        end)
+        if ok and isValid(class) then
+            memberSessionRowClass = class
+            return memberSessionRowClass
+        end
+    end
+
+    local ok, class = pcall(function()
+        return StaticFindObject(MEMBER_SESSION_ROW_CLASS_PATH)
+    end)
+    if ok and isValid(class) then
+        memberSessionRowClass = class
+        return memberSessionRowClass
+    end
+    return nil
 end
 
 local function resolveInviteSessionRowClass(template)
@@ -215,6 +254,182 @@ local function createInviteSessionRow(sessionWidget, template)
     return widget, nil
 end
 
+local function createMemberSessionRow(sessionWidget, template, playerState, playerIndex)
+    local class = resolveMemberSessionRowClass(template)
+    if not isValid(class) then
+        return nil, "UI_Menu_SessionMember_C is not loaded"
+    end
+
+    local library = resolveWidgetBlueprintLibrary()
+    if not isValid(library) then
+        return nil, "WidgetBlueprintLibrary is not loaded"
+    end
+
+    local owningPlayer = nil
+    pcall(function()
+        owningPlayer = sessionWidget:GetOwningPlayer()
+    end)
+
+    local ok, widget = pcall(function()
+        return library:Create(sessionWidget, class, owningPlayer)
+    end)
+    if not ok then
+        return nil, widget
+    end
+    if not isValid(widget) then
+        return nil, "WidgetBlueprintLibrary.Create returned no member widget"
+    end
+
+    local stateOk, stateError = pcall(function()
+        widget:SetPropertyValue("playerState", playerState)
+        -- The Blueprint uses a zero-based id for profile/mute/kick actions.
+        widget:SetPropertyValue("id", playerIndex - 1)
+    end)
+    if not stateOk then
+        return nil, stateError
+    end
+    return widget, nil
+end
+
+local function getSessionModsAllowed(sessionWidget)
+    local textOk, textBlock = pcall(function()
+        return sessionWidget:GetPropertyValue("TextBlock_Cheats")
+    end)
+    if not textOk or not isValid(textBlock) then
+        return nil, "TextBlock_Cheats is unavailable"
+    end
+
+    -- This is the same widget whose visibility the game's
+    -- F_IsSessionCheatsEnabled result controls. In Far Far West, "cheats"
+    -- is the session setting exposed to players as "Allow mods".
+    local visibleOk, visible = pcall(function()
+        return textBlock:IsVisible()
+    end)
+    if visibleOk and type(visible) == "boolean" then
+        return visible, nil
+    end
+    return nil, visible
+end
+
+local function readPlayerStates(gameState)
+    if not isValid(gameState) then
+        return nil, "GameState is unavailable"
+    end
+
+    local arrayOk, playerArray = pcall(function()
+        return gameState:GetPropertyValue("PlayerArray")
+    end)
+    if not arrayOk or playerArray == nil then
+        return nil, "GameState.PlayerArray is unavailable"
+    end
+
+    local countOk, count = pcall(function()
+        return playerArray:GetArrayNum()
+    end)
+    if not countOk or type(count) ~= "number" then
+        return nil, "GameState.PlayerArray count is unavailable"
+    end
+    if count < 1 or count > TARGET_MAX_PLAYERS then
+        return nil, string.format("PlayerArray count %s is outside 1..%d", tostring(count), TARGET_MAX_PLAYERS)
+    end
+
+    local states = {}
+    for index = 1, count do
+        local stateOk, playerState = pcall(function()
+            return playerArray[index]
+        end)
+        if not stateOk or not isValid(playerState) then
+            return nil, string.format("PlayerArray[%d] is unavailable", index)
+        end
+        table.insert(states, playerState)
+    end
+    return states, nil
+end
+
+local function getPlayerStatesForWidget(sessionWidget)
+    local worldOk, world = pcall(function()
+        return sessionWidget:GetWorld()
+    end)
+    if not worldOk or not isValid(world) then
+        return nil, "Current Session world is unavailable"
+    end
+
+    local stateOk, gameState = pcall(function()
+        return world:GetPropertyValue("GameState")
+    end)
+    if stateOk and isValid(gameState) then
+        return readPlayerStates(gameState)
+    end
+
+    -- Some UUserWidget world wrappers do not expose UWorld.GameState. Fall
+    -- back only to a tracked GameState from the exact same world; never use a
+    -- stale menu/travel world merely because it contains more players.
+    local worldName = getObjectName(world)
+    for _, candidate in pairs(trackedGameStates) do
+        if isValid(candidate) then
+            local candidateWorldOk, candidateWorld = pcall(function()
+                return candidate:GetWorld()
+            end)
+            if candidateWorldOk and isValid(candidateWorld) and getObjectName(candidateWorld) == worldName then
+                return readPlayerStates(candidate)
+            end
+        end
+    end
+    return nil, "No GameState from the Current Session world is tracked"
+end
+
+local function getMemberPlayerState(row)
+    local ok, playerState = pcall(function()
+        return row:GetPropertyValue("playerState")
+    end)
+    if ok and isValid(playerState) then
+        return playerState
+    end
+    return nil
+end
+
+local function removeSessionRow(panel, row)
+    if not isValid(row) then
+        return false
+    end
+    local ok, removed = pcall(function()
+        return panel:RemoveChild(row)
+    end)
+    return ok and removed == true
+end
+
+local function rememberOwnedSessionRow(row, rowType)
+    ownedSessionRows[getObjectName(row)] = {
+        object = row,
+        rowType = rowType,
+    }
+end
+
+local function isOwnedSessionRow(row)
+    local name = getObjectName(row)
+    local entry = ownedSessionRows[name]
+    if entry == nil then
+        return false
+    end
+    if not isValid(entry.object) then
+        ownedSessionRows[name] = nil
+        return false
+    end
+    return getObjectName(entry.object) == name
+end
+
+local function removeOwnedSessionRows(panel, rows)
+    local removed = 0
+    for _, row in ipairs(rows) do
+        local name = getObjectName(row)
+        if isOwnedSessionRow(row) and removeSessionRow(panel, row) then
+            ownedSessionRows[name] = nil
+            removed = removed + 1
+        end
+    end
+    return removed
+end
+
 local function expandCurrentSessionUi(sessionWidget, reason)
     if not isValid(sessionWidget) then
         return false
@@ -237,9 +452,65 @@ local function expandCurrentSessionUi(sessionWidget, reason)
         return false
     end
 
+    local modsAllowed, gateError = getSessionModsAllowed(sessionWidget)
+    if modsAllowed == nil then
+        logUiStateOnce(
+            "SessionUiDeferred",
+            string.format("reason=%s widget=%s modsAllowed=unknown detail=%s", reason, getObjectName(sessionWidget), tostring(gateError))
+        )
+        return false
+    end
+
     local before, inspectError = inspectSessionRows(panel)
     if before == nil then
         logUiErrorOnce("SessionUiInspect", inspectError)
+        return false
+    end
+
+
+    if not modsAllowed then
+        local ownedRows = {}
+        for _, row in ipairs(before.memberRows) do
+            table.insert(ownedRows, row)
+        end
+        for _, row in ipairs(before.inviteRows) do
+            table.insert(ownedRows, row)
+        end
+        local removed = removeOwnedSessionRows(panel, ownedRows)
+        local baselineRestored = 0
+        if removed > 0 then
+            local baseline, baselineError = inspectSessionRows(panel)
+            if baseline == nil then
+                logUiErrorOnce("SessionUiBaselineInspect", baselineError)
+                return false
+            end
+            local baselineRows = 4
+            local baselineInvites = math.max(0, baselineRows - baseline.members)
+            for _ = baseline.invites + 1, baselineInvites do
+                local widget, createError = createInviteSessionRow(sessionWidget, before.template)
+                if not isValid(widget) then
+                    logUiErrorOnce("SessionUiBaselineCreate", createError)
+                    break
+                end
+                local addOk, slotOrError = pcall(function()
+                    return panel:AddChild(widget)
+                end)
+                if not addOk or not isValid(slotOrError) then
+                    logUiErrorOnce("SessionUiBaselineAddChild", slotOrError)
+                    break
+                end
+                baselineRestored = baselineRestored + 1
+            end
+        end
+        logUiStateOnce(
+            "SessionUiGate",
+            string.format(
+                "widget=%s modsAllowed=false ownedRowsRemoved=%d baselineInvitesRestored=%d",
+                getObjectName(sessionWidget),
+                removed,
+                baselineRestored
+            )
+        )
         return false
     end
 
@@ -267,18 +538,162 @@ local function expandCurrentSessionUi(sessionWidget, reason)
         return false
     end
 
-    maximumInviteSlotsObserved = math.max(maximumInviteSlotsObserved, before.invites)
-    if before.total >= TARGET_SESSION_ROWS then
-        local ready = before.total == TARGET_SESSION_ROWS
-            and before.invites == TARGET_SESSION_ROWS - before.members
-        sessionUiExpanded = sessionUiExpanded or ready
-        return ready
+    local playerStates, playerStateError = getPlayerStatesForWidget(sessionWidget)
+    if playerStates == nil then
+        logUiStateOnce(
+            "SessionUiDeferred",
+            string.format("reason=%s widget=%s modsAllowed=true detail=%s", reason, getObjectName(sessionWidget), tostring(playerStateError))
+        )
+        return false
     end
 
-    local requested = TARGET_SESSION_ROWS - before.total
-    local added = 0
-    for _ = 1, requested do
-        local widget, createError = createInviteSessionRow(sessionWidget, before.template)
+    local activePlayers = {}
+    for _, playerState in ipairs(playerStates) do
+        activePlayers[getObjectName(playerState)] = true
+    end
+
+    local representedPlayers = {}
+    for _, row in ipairs(before.memberRows) do
+        local playerState = getMemberPlayerState(row)
+        if not isValid(playerState) then
+            logUiStateOnce(
+                "SessionUiDeferred",
+                string.format("reason=%s widget=%s member=%s playerState=unavailable", reason, getObjectName(sessionWidget), getObjectName(row))
+            )
+            return false
+        end
+        local playerName = getObjectName(playerState)
+        if representedPlayers[playerName] then
+            logUiStateOnce(
+                "SessionUiIncompatible",
+                string.format("reason=%s widget=%s duplicatePlayerState=%s", reason, getObjectName(sessionWidget), playerName)
+            )
+            return false
+        end
+        if not activePlayers[playerName] and not isOwnedSessionRow(row) then
+            logUiStateOnce(
+                "SessionUiIncompatible",
+                string.format("reason=%s widget=%s staleGameMember=%s", reason, getObjectName(sessionWidget), playerName)
+            )
+            return false
+        end
+        representedPlayers[playerName] = true
+    end
+
+    local desiredInvites = TARGET_SESSION_ROWS - #playerStates
+    local allPlayersRepresented = true
+    for _, playerState in ipairs(playerStates) do
+        if not representedPlayers[getObjectName(playerState)] then
+            allPlayersRepresented = false
+            break
+        end
+    end
+    local alreadyReady = before.total == TARGET_SESSION_ROWS
+        and before.unknown == 0
+        and before.members == #playerStates
+        and before.invites == desiredInvites
+        and before.membersBeforeInvites
+        and allPlayersRepresented
+    if alreadyReady then
+        pcall(function()
+            sessionWidget:SetPropertyValue("showedPlayers", #playerStates)
+        end)
+        maximumInviteSlotsObserved = math.max(maximumInviteSlotsObserved, before.invites)
+        maximumMemberRowsObserved = math.max(maximumMemberRowsObserved, before.members)
+        sessionUiExpanded = true
+        return true
+    end
+
+    -- Remove every invite row before adding missing members. Otherwise a
+    -- player who joins later would be appended below existing Invite buttons.
+    -- The rows are recreated after the member list is synchronized.
+    local initial = before
+    local rowsRemoved = 0
+    if desiredInvites > 0 and not isValid(resolveInviteSessionRowClass(before.template)) then
+        logUiErrorOnce("SessionUiResolveInviteClass", "UI_Menu_Button_Session_Invite_C is not loaded")
+        return false
+    end
+    for index = #before.inviteRows, 1, -1 do
+        local row = before.inviteRows[index]
+        if not removeSessionRow(panel, row) then
+            logUiErrorOnce("SessionUiRemoveInvite", getObjectName(row))
+            return false
+        end
+        ownedSessionRows[getObjectName(row)] = nil
+        rowsRemoved = rowsRemoved + 1
+    end
+
+    before, inspectError = inspectSessionRows(panel)
+    if before == nil then
+        logUiErrorOnce("SessionUiInspectAfterInviteReset", inspectError)
+        return false
+    end
+
+    local membersRemoved = 0
+    for _, row in ipairs(before.memberRows) do
+        local playerState = getMemberPlayerState(row)
+        local rowName = getObjectName(row)
+        if isOwnedSessionRow(row) and isValid(playerState) and not activePlayers[getObjectName(playerState)] then
+            if removeSessionRow(panel, row) then
+                ownedSessionRows[rowName] = nil
+                membersRemoved = membersRemoved + 1
+            end
+        end
+    end
+
+    if membersRemoved > 0 then
+        before, inspectError = inspectSessionRows(panel)
+        if before == nil then
+            logUiErrorOnce("SessionUiInspectAfterMemberRemoval", inspectError)
+            return false
+        end
+        representedPlayers = {}
+        for _, row in ipairs(before.memberRows) do
+            local playerState = getMemberPlayerState(row)
+            if isValid(playerState) then
+                representedPlayers[getObjectName(playerState)] = true
+            end
+        end
+    end
+
+    local membersAdded = 0
+    local memberTemplate = before.memberRows[1]
+    for playerIndex, playerState in ipairs(playerStates) do
+        if not representedPlayers[getObjectName(playerState)] then
+            local widget, createError = createMemberSessionRow(sessionWidget, memberTemplate, playerState, playerIndex)
+            if not isValid(widget) then
+                logUiErrorOnce("SessionUiCreateMember", createError)
+                break
+            end
+
+            local addOk, slotOrError = pcall(function()
+                return panel:AddChild(widget)
+            end)
+            if not addOk or not isValid(slotOrError) then
+                logUiErrorOnce("SessionUiAddMember", slotOrError)
+                break
+            end
+            rememberOwnedSessionRow(widget, "member")
+            representedPlayers[getObjectName(playerState)] = true
+            membersAdded = membersAdded + 1
+
+            -- Refresh after the widget has a playerState and belongs to the
+            -- panel. The Blueprint also keeps its own refresh timer.
+            pcall(function()
+                widget:F_RefreshInformations()
+            end)
+        end
+    end
+
+    local middle, middleError = inspectSessionRows(panel)
+    if middle == nil then
+        logUiErrorOnce("SessionUiInspectAfterMembers", middleError)
+        return false
+    end
+
+    local invitesAdded = 0
+    for _ = 1, desiredInvites do
+        local widget, createError = createInviteSessionRow(sessionWidget, initial.template)
         if not isValid(widget) then
             logUiErrorOnce("SessionUiCreate", createError)
             break
@@ -291,7 +706,8 @@ local function expandCurrentSessionUi(sessionWidget, reason)
             logUiErrorOnce("SessionUiAddChild", slotOrError)
             break
         end
-        added = added + 1
+        rememberOwnedSessionRow(widget, "invite")
+        invitesAdded = invitesAdded + 1
     end
 
     local after, afterError = inspectSessionRows(panel)
@@ -300,21 +716,30 @@ local function expandCurrentSessionUi(sessionWidget, reason)
         return false
     end
 
+    pcall(function()
+        sessionWidget:SetPropertyValue("showedPlayers", #playerStates)
+    end)
+
     maximumInviteSlotsObserved = math.max(maximumInviteSlotsObserved, after.invites)
+    maximumMemberRowsObserved = math.max(maximumMemberRowsObserved, after.members)
     local ready = after.total == TARGET_SESSION_ROWS
         and after.unknown == 0
-        and after.invites == TARGET_SESSION_ROWS - after.members
+        and after.members == #playerStates
+        and after.invites == desiredInvites
     sessionUiExpanded = sessionUiExpanded or ready
-    if added > 0 then
+    if membersAdded > 0 or membersRemoved > 0 or invitesAdded > 0 or rowsRemoved > 0 then
         sessionUiAugmentations = sessionUiAugmentations + 1
         log(string.format(
-            "SessionUi reason=%s rowsBefore=%d membersBefore=%d inviteBefore=%d requested=%d added=%d rowsAfter=%d membersAfter=%d inviteAfter=%d READY=%s",
+            "SessionUi reason=%s modsAllowed=true playersObserved=%d rowsBefore=%d membersBefore=%d inviteBefore=%d membersAdded=%d membersRemoved=%d invitesAdded=%d rowsRemoved=%d rowsAfter=%d membersAfter=%d inviteAfter=%d READY=%s",
             reason,
-            before.total,
-            before.members,
-            before.invites,
-            requested,
-            added,
+            #playerStates,
+            initial.total,
+            initial.members,
+            initial.invites,
+            membersAdded,
+            membersRemoved,
+            invitesAdded,
+            rowsRemoved,
             after.total,
             after.members,
             after.invites,
@@ -694,7 +1119,7 @@ end
 
 local function printStatus(reason)
     log(string.format(
-        "Status reason=%s target=%d sessionCapApplied=%s managerCapApplied=%s nativeHooks=%d observedPlayers=%d sessionUiExpanded=%s maximumInviteSlotsObserved=%d uiAugmentations=%d",
+        "Status reason=%s target=%d sessionCapApplied=%s managerCapApplied=%s nativeHooks=%d observedPlayers=%d sessionUiExpanded=%s maximumMemberRowsObserved=%d maximumInviteSlotsObserved=%d uiAugmentations=%d",
         reason,
         TARGET_MAX_PLAYERS,
         tostring(sessionCapApplied),
@@ -702,6 +1127,7 @@ local function printStatus(reason)
         nativeHookCount,
         lastObservedPlayers,
         tostring(sessionUiExpanded),
+        maximumMemberRowsObserved,
         maximumInviteSlotsObserved,
         sessionUiAugmentations
     ))
@@ -773,7 +1199,7 @@ end
 log(string.format("Mod loaded - v%s", MOD_VERSION))
 log(string.format("Target MaxPlayers=%d", TARGET_MAX_PLAYERS))
 log(string.format("Target SessionRows=%d InviteSlotsWhenSolo=%d", TARGET_SESSION_ROWS, TARGET_SESSION_ROWS - 1))
-log("Implementation=source-owned-lua runtimeSessionUi=true cookedAssets=false")
+log("Implementation=source-owned-lua runtimeSessionUi=true allowModsUiGate=true synchronizedMemberRows=true cookedAssets=false")
 
 registerObjectNotifications()
 registerGameStateHook()

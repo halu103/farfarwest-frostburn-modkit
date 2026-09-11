@@ -5,7 +5,9 @@ param(
 
     [switch]$RequireCurrentSession,
 
-    [switch]$RequireSessionUi
+    [switch]$RequireSessionUi,
+
+    [switch]$RequireSynchronizedPlayerRows
 )
 
 Set-StrictMode -Version Latest
@@ -116,6 +118,26 @@ foreach ($match in $inviteMatches) {
 }
 $sevenInviteSlotsDisplayed = $maximumInviteSlotsObserved -ge [int]$mod.soloInviteSlots
 $sessionUiPass = -not $RequireSessionUi -or ($sessionUiExpanded -and $sevenInviteSlotsDisplayed)
+$synchronizedMatches = [regex]::Matches(
+    $logText,
+    "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*SessionUi .*modsAllowed=true playersObserved=(\d+).*membersAfter=(\d+).*READY=true",
+    [Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
+$maximumSynchronizedPlayerRows = 0
+foreach ($match in $synchronizedMatches) {
+    $playersObserved = [int]$match.Groups[1].Value
+    $membersAfter = [int]$match.Groups[2].Value
+    if ($playersObserved -eq $membersAfter) {
+        $maximumSynchronizedPlayerRows = [Math]::Max($maximumSynchronizedPlayerRows, $membersAfter)
+    }
+}
+$fifthPlayerRowDisplayed = $maximumSynchronizedPlayerRows -ge 5
+$synchronizedPlayerRowsPass = -not $RequireSynchronizedPlayerRows -or $fifthPlayerRowDisplayed
+$allowModsUiGateObserved = [regex]::IsMatch(
+    $logText,
+    "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*SessionUiGate .*modsAllowed=false",
+    [Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
 $report = [pscustomobject]@{
     schemaVersion = 3
     mode = "log-only"
@@ -134,9 +156,12 @@ $report = [pscustomobject]@{
     sessionUiExpanded = $sessionUiExpanded
     maximumInviteSlotsObserved = $maximumInviteSlotsObserved
     sevenInviteSlotsDisplayed = $sevenInviteSlotsDisplayed
+    allowModsUiGateObserved = $allowModsUiGateObserved
     maximumObservedPlayers = $maximumObservedPlayers
+    maximumSynchronizedPlayerRows = $maximumSynchronizedPlayerRows
+    fifthPlayerRowDisplayed = $fifthPlayerRowDisplayed
     fatalMarkers = $fatalResults
-    passed = $markersPass -and $fatalFree -and $sessionPass -and $sessionUiPass
+    passed = $markersPass -and $fatalFree -and $sessionPass -and $sessionUiPass -and $synchronizedPlayerRowsPass
     networkCapacityTested = $maximumObservedPlayers -ge 5
     fullEightPlayerSessionTested = $maximumObservedPlayers -ge 8
 }
@@ -151,4 +176,7 @@ if (-not $sessionPass) {
 }
 if (-not $sessionUiPass) {
     throw "The current log does not prove a solo-host Session screen with seven invite slots."
+}
+if (-not $synchronizedPlayerRowsPass) {
+    throw "The current log does not prove that five real players were rendered as five Session member rows."
 }

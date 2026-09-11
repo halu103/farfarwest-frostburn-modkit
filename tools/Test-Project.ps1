@@ -105,6 +105,8 @@ Assert-ProjectCheck -Condition ($mod.version -match "^\d+\.\d+\.\d+$") -Message 
 Assert-ProjectCheck -Condition ([int]$mod.maxPlayers -eq 8) -Message "Owned mod must target eight players."
 Assert-ProjectCheck -Condition ([int]$mod.sessionRows -eq 8) -Message "Session UI must target eight rows."
 Assert-ProjectCheck -Condition ([int]$mod.soloInviteSlots -eq 7) -Message "Solo host UI must target seven invite slots."
+Assert-ProjectCheck -Condition ([bool]$mod.requiresAllowMods) -Message "Expanded Session UI must require the game's Allow mods setting."
+Assert-ProjectCheck -Condition ([bool]$mod.uiSynchronizesPlayerRows) -Message "Session UI must synchronize real player rows before invite rows."
 Assert-ProjectCheck -Condition ($mod.license -eq "MIT") -Message "Owned mod source must remain MIT licensed."
 Assert-ProjectCheck -Condition ($mod.packageMode -eq "source-owned-lua" -and -not [bool]$mod.cookedAssetsIncluded) `
     -Message "The Frostburn release must contain only the owned Lua mod."
@@ -187,6 +189,13 @@ if ($sourceMod -and (Test-Path -LiteralPath $sourceMod -PathType Container)) {
             -Message "Owned Lua source is missing the current-session UI expansion."
         Assert-ProjectCheck -Condition ($mainLua -match 'UI_Menu_Button_Session_Invite') `
             -Message "Owned Lua source is missing the Frostburn invite-row widget class."
+        Assert-ProjectCheck -Condition ($mainLua -match 'UI_Menu_SessionMember' -and
+            $mainLua -match 'playerState' -and
+            $mainLua -match 'playersObserved=%d') `
+            -Message "Owned Lua source is missing real-player row synchronization."
+        Assert-ProjectCheck -Condition ($mainLua -match 'TextBlock_Cheats' -and
+            $mainLua -match 'SessionUiGate') `
+            -Message "Owned Lua source is missing the Allow mods UI gate."
         Assert-ProjectCheck -Condition ($mainLua -match 'SessionUi .*READY=%s') `
             -Message "Owned Lua source is missing the verified Session UI runtime marker."
         Assert-ProjectCheck -Condition ($mainLua -notmatch '(?i)FFWMorePlayers|Nexus') `

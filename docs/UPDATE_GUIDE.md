@@ -173,6 +173,12 @@ The installer takes a dated backup and refuses to write if the game is running.
 Launch the game normally, create a room with **Allow mods** enabled, open
 **Current Session**, then run the matching verification command.
 
+For the v1.1.3 member-row regression check, have at least five real players in
+that room and add `-RequireSynchronizedPlayerRows` to the command. A passing
+report must show `maximumSynchronizedPlayerRows` of at least `5` and
+`fifthPlayerRowDisplayed: true`. Also create a separate room without **Allow
+mods** and confirm that Current Session keeps the normal four-row layout.
+
 Windows PowerShell 5.1:
 
 ```powershell

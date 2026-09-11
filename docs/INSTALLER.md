@@ -19,6 +19,11 @@ generated source archive. See [publishing](PUBLISHING.md).
 4. Click **Install / Cài** and confirm.
 5. Start the game normally, create a room, and tick **Allow mods**.
 
+Version 1.1.3 expands the Session list only when the room's **Allow mods**
+status is active. With one host it should show seven Invite buttons; with five
+real players it should show five member names and three Invite buttons. A room
+created without **Allow mods** should retain the game's normal four-row UI.
+
 The installer never launches, closes, or restarts the game. It refuses to
 write if either Far Far West process is running. It validates the exact game
 version, executable SHA-256, compatibility signatures, embedded release hash,

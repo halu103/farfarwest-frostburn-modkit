@@ -36,10 +36,10 @@ to the first GitHub Release; see [publishing a release](docs/PUBLISHING.md).
 
 Current baseline:
 
-- Far Far West: `0.2.0.4 - CL 559`
+- Far Far West: `0.2.0.20 - CL 915`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- Owned mod: `FFWFrostburn8 v1.1.2` (MIT)
+- Owned mod: `FFWFrostburn8 v1.1.3` (MIT)
 - Target capacity: `8`
 - Session UI: `1 host + 7 invite slots` when hosting alone
 - Package mode: source-owned Lua only
@@ -145,15 +145,18 @@ the three layers used by the current game:
 3. native create/update-session capacity parameters discovered from reflected
    Unreal metadata.
 
-It also expands the current-session player list at runtime from four rows to
-eight. When the host is alone, that means one host row plus seven clickable
-invite rows. The extra rows are created from the game's current Frostburn
-`UI_Menu_Button_Session_Invite` widget, so no copied or stale cooked UI asset is
-required.
+It also synchronizes the current-session list with the live `PlayerArray`
+before filling the remaining positions to eight. A fifth real player therefore
+gets a fifth `UI_Menu_SessionMember` row instead of being hidden behind a stale
+invite row. When the host is alone, that means one host row plus seven clickable
+invite rows. Both member and invite rows use the game's current Frostburn
+widgets, so no copied or stale cooked UI asset is required.
 
 When creating a network room, tick **Allow mods** before choosing the room
-type. This marks the room as mod-enabled for other clients; it does not itself
-load UE4SS or change the four-row interface.
+type. Version 1.1.3 reads the same in-session flag used for the red
+"configured to allow mods" message and expands the Session interface only when
+that flag is active. The checkbox does not load or unload an installed UE4SS
+script; a newly installed version is loaded the next time the game starts.
 
 The native hook discovery is fail-closed: only exact capacity field names such
 as `MaxPlayers`, `NumPublicConnections`, and `PublicConnections` are changed.
@@ -208,6 +211,35 @@ limit was exceeded; observing all eight is the definitive full-capacity test.
 
 In the UE console, `FFW8_Status` asks the mod to rescan and print its current
 status to `ue4ss/UE4SS.log`.
+
+To verify the reported fifth-player display fix, first open **Current Session**
+while at least five real players are in the same mod-enabled room, then run the
+matching command below. This is intentionally a separate live multiplayer
+check; a build or static executable scan cannot prove it.
+
+Windows PowerShell 5.1:
+
+```powershell
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLog.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
+  -RequireCurrentSession `
+  -RequireSynchronizedPlayerRows
+```
+
+PowerShell 7+:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -File .\tools\Test-RuntimeLog.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
+  -RequireCurrentSession `
+  -RequireSynchronizedPlayerRows
+```
+
+A pass reports `maximumSynchronizedPlayerRows` of at least `5` and
+`fifthPlayerRowDisplayed: true`. To check the other regression, create a fresh
+room without **Allow mods**: the interface must stay at the game's normal four
+rows, and the report exposes `allowModsUiGateObserved: true` after that screen
+has been observed.
 
 ## Restore a backup
 

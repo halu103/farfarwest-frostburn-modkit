@@ -153,6 +153,10 @@ CAI DAT / INSTALL
    Check the game path, click "Install / Cai", and wait for success.
 4. Mo game binh thuong, tao phong va tich "Allow mods".
    Start the game normally, create a room, and tick "Allow mods".
+5. Khi mot minh: kiem tra 7 nut Invite. Khi co 5 nguoi: kiem tra du 5 ten va
+   con 3 nut Invite. Neu khong tick "Allow mods", giao dien phai giu 4 dong.
+   Alone: verify 7 Invite buttons. With 5 players: verify all 5 names and 3
+   Invite buttons. Without "Allow mods", the UI must keep its normal 4 rows.
 
 Khong can PowerShell. Bo cai khong tai them mod cua nguoi khac va khong tu mo,
 dong hay khoi dong lai game. Neu game dang chay, bo cai se tu choi ghi file.

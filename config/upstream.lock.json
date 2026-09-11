@@ -3,9 +3,9 @@
   "projectVersion": "1.0.0",
   "target": {
     "game": "Far Far West",
-    "productVersion": "0.2.0.4 - CL 559",
+    "productVersion": "0.2.0.20 - CL 915",
     "executableRelativePath": "FarFarWest/Binaries/Win64/FarFarWest-Win64-Shipping.exe",
-    "executableSha256": "A8D95F06EA8FA4E2D03B193F82F812AA9BA1899F2BA744C4A1388017844C3782",
+    "executableSha256": "8513353F0FCF02AD43233CF7E9440EEBE8F05785F9F7A79C0BC7EC35713070D5",
     "unrealEngineMajor": 5,
     "unrealEngineMinor": 8
   },

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.3 - 2026-09-11
+
+- Synchronize `UI_Menu_SessionMember` rows with the live `PlayerArray` before
+  adding invite rows, so a fifth real player is displayed as the fifth member
+  and leaves three invite positions in an eight-player room.
+- Gate the eight-row Session interface on the game's live **Allow mods** status;
+  an unmodified room now keeps the normal four-row interface even while the
+  UE4SS script is installed locally.
+- Add runtime evidence for synchronized real-player rows and a strict
+  `-RequireSynchronizedPlayerRows` verification option.
+- Update the pinned game baseline to `0.2.0.20 - CL 915` after all three tracked
+  UE 5.8 signatures matched the executable exactly once in a read-only scan.
+- Keep live game launch and five-to-eight-client validation explicitly pending;
+  this release was built without starting or restarting Far Far West.
+
 ## 1.1.2 - 2026-09-04
 
 - Added a native x64 WinForms `Setup.exe` builder with the verified release ZIP
