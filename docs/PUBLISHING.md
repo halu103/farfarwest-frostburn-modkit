@@ -41,7 +41,7 @@ pwsh.exe -NoLogo -NoProfile -File .\tools\Build-DownloadBundle.ps1 `
 The final upload directory is:
 
 ```text
-dist\release-v1.1.3\
+dist\release-v1.1.4\
   FFWFrostburn8-Setup.exe
   FFWFrostburn8-Setup.exe.sha256.txt
   FFWFrostburn8-Windows-x64.zip
@@ -69,14 +69,15 @@ launch the game.
 On `https://github.com/halu103/farfarwest-frostburn-modkit`:
 
 1. Open **Releases** and choose **Draft a new release**.
-2. Create a version tag such as `v1.1.3-ffw-0.2.0.20-cl915` from the reviewed
+2. Create a version tag such as `v1.1.4-host-only-experimental-ffw-0.2.0.20-cl915` from the reviewed
    commit.
-3. Use a title such as `FFWFrostburn8 v1.1.3 — Far Far West 0.2.0.20 CL 915`.
-4. Upload all four files from `dist\release-v1.1.3` as Release assets.
+3. Use a title such as `FFWFrostburn8 v1.1.4 Host-Only Experimental — Far Far West 0.2.0.20 CL 915`.
+4. Upload all four files from `dist\release-v1.1.4` as Release assets.
 5. Put both SHA-256 values and the supported game version in the release notes.
-6. State that the build is unsigned and that real five-to-eight-player network
-   validation is still required unless that test has actually been completed.
-7. Publish the release.
+6. State that the build is unsigned, only the host should install it for this
+   experiment, and vanilla-client compatibility is still unverified.
+7. Publish it as a **prerelease** until clean clients 5–8, map travel, an
+   objective, reconnect, and manual kick have all passed.
 
 Do not upload the raw game executable, `vendor/`, `work/`, or the raw source
 release ZIP. The installer already embeds the verified runtime payload.

@@ -1,8 +1,9 @@
-# Far Far West Frostburn 8 Players
+# Far Far West Frostburn 8 Players — Host-Only Experimental
 
 An independent, source-owned UE4SS mod and maintenance kit for raising Far Far
 West's multiplayer capacity to eight players after the Frostburn/Unreal Engine
-5.8 update.
+5.8 update. Version 1.1.4 is an experimental build intended to test whether
+only the host can install the mod while guests remain completely vanilla.
 
 The repository contains the complete Lua source for `FFWFrostburn8`. It does
 not download, copy, or package another player's-capacity mod, and it does not
@@ -39,10 +40,11 @@ Current baseline:
 - Far Far West: `0.2.0.20 - CL 915`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- Owned mod: `FFWFrostburn8 v1.1.3` (MIT)
+- Owned mod: `FFWFrostburn8 v1.1.4` (MIT, host-only experimental)
 - Target capacity: `8`
 - Session UI: `1 host + 7 invite slots` when hosting alone
 - Package mode: source-owned Lua only
+- Vanilla-client compatibility: unverified until a real 5–8 player test passes
 
 ## Install with the EXE (recommended)
 
@@ -50,6 +52,12 @@ Players do not need to type a PowerShell command. Close Far Far West,
 double-click the release file ending in `Setup.exe`, verify the automatically
 detected game folder, and click **Install / Cài**. The full package is embedded
 in the EXE, so it does not download another multiplayer mod.
+
+For the v1.1.4 host-only experiment, install this build on the **host only**.
+Guests must use the same game version but must not install UE4SS or this mod;
+otherwise the test cannot prove vanilla-client compatibility. This is a
+prerelease claim, not a guarantee that missions remain synchronized at 5–8
+players.
 
 The installer validates the supported game build and all embedded hashes,
 creates a persistent backup, installs and verifies every managed file, and
@@ -138,25 +146,35 @@ common command-not-found and TLS errors, and matching verify/restore commands.
 ## What the mod changes
 
 `src/Mods/FFWFrostburn8/Scripts/main.lua` independently applies the capacity at
-the three layers used by the current game:
+the four host-side layers used by the current game:
 
 1. server-side `AGameSession.MaxPlayers`;
 2. `BP_Manager_Multiplayer_C.MaxPlayers` before a room is created;
 3. native create/update-session capacity parameters discovered from reflected
-   Unreal metadata.
+   Unreal metadata;
+4. SteamCorePro lobby `MaxMembers`, discovered by its exact reflected field
+   name instead of guessing an integer argument.
+
+The experimental join guard suppresses only an empty-reason automatic kick
+from the known lobby/player-state validation path while an **Allow Mods** room
+has 4–7 players. Manual kicks, bans, reason-bearing kicks, non-authority calls,
+rooms without **Allow Mods**, and attempts beyond eight players are left alone.
 
 It also synchronizes the current-session list with the live `PlayerArray`
 before filling the remaining positions to eight. A fifth real player therefore
 gets a fifth `UI_Menu_SessionMember` row instead of being hidden behind a stale
 invite row. When the host is alone, that means one host row plus seven clickable
-invite rows. Both member and invite rows use the game's current Frostburn
+invite rows. With five players, exactly three Invite rows is correct because
+`5 + 3 = 8`. Both member and invite rows use the game's current Frostburn
 widgets, so no copied or stale cooked UI asset is required.
 
 When creating a network room, tick **Allow mods** before choosing the room
-type. Version 1.1.3 reads the same in-session flag used for the red
-"configured to allow mods" message and expands the Session interface only when
-that flag is active. The checkbox does not load or unload an installed UE4SS
-script; a newly installed version is loaded the next time the game starts.
+type. Version 1.1.4 captures that choice when the host creates the room and
+keeps it through the widget-construction race; the red "configured to allow
+mods" message remains a secondary confirmation. This prevents a temporary
+hidden text widget from incorrectly restoring the vanilla `1 + 3` layout. The
+checkbox does not load or unload an installed UE4SS script; a newly installed
+version is loaded the next time the game starts.
 
 The native hook discovery is fail-closed: only exact capacity field names such
 as `MaxPlayers`, `NumPublicConnections`, and `PublicConnections` are changed.
@@ -164,7 +182,7 @@ If an update renames them, the mod reports that no target was found instead of
 guessing an integer argument.
 
 The mod does not change enemy scaling, create fake players, suppress manual
-kicks, or install PAK/UCAS/UTOC files. The installer removes the exact legacy
+kicks/bans, or install PAK/UCAS/UTOC files. The installer removes the exact legacy
 cooked-asset filenames known to crash UE 5.8, but only after including any
 existing copies in its backup.
 
@@ -204,6 +222,13 @@ report separately exposes:
 - `maximumObservedPlayers`: largest real `PlayerArray` seen in the log;
 - `networkCapacityTested`: at least a fifth real player joined;
 - `fullEightPlayerSessionTested`: eight real players were observed together.
+- `hostOnlyRoomHookReady`, `hostOnlyJoinGuardReady`, and
+  `hostOnlyLobbyHookReady`: the three experimental host-side hooks attached;
+- `hostOnlyLobbyWriteApplied`: Steam lobby `MaxMembers` was written to eight;
+- `hostOnlyJoinKickBlocked`: the selective join-time empty-reason kick was
+  intercepted;
+- `soloInviteUiVerified`: an exact visible `1 member + 7 Invite` layout;
+- `fivePlayerUiVerified`: an exact visible `5 members + 3 Invite` layout.
 
 Setting a value to eight is not the same as proving eight network clients. A
 fifth successful join is the end-to-end proof that the original four-player
@@ -240,6 +265,25 @@ A pass reports `maximumSynchronizedPlayerRows` of at least `5` and
 room without **Allow mods**: the interface must stay at the game's normal four
 rows, and the report exposes `allowModsUiGateObserved: true` after that screen
 has been observed.
+
+For the host-only experiment, use clean guests and run this on the host after
+the fifth player has joined and **Current Session** has been opened:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -File .\tools\Test-RuntimeLog.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
+  -RequireCurrentSession `
+  -RequireHostOnlyHooks `
+  -RequireHostOnlyJoin `
+  -RequireFivePlayerUi
+```
+
+The host log cannot inspect guest disks, so it deliberately reports
+`vanillaClientInstallationStateProven: false`. Confirm separately that every
+guest has no `dwmapi.dll`/UE4SS installation. Test clients 2–4 first, then the
+fifth via both session code and Steam Invite, then clients 6–8, map travel,
+one mission objective, reconnect, and a manual kick. Do not advertise
+host-only support until that matrix succeeds.
 
 ## Restore a backup
 

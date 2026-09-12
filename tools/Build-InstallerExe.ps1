@@ -86,7 +86,7 @@ $buildInfoSource = @"
 using System.Reflection;
 
 [assembly: AssemblyTitle("FFWFrostburn8 Installer")]
-[assembly: AssemblyDescription("Offline installer for the Far Far West Frostburn 8-player mod")]
+[assembly: AssemblyDescription("Host-only experimental installer for the Far Far West Frostburn 8-player mod")]
 [assembly: AssemblyCompany("FFWFrostburn8")]
 [assembly: AssemblyProduct("FFWFrostburn8 Installer")]
 [assembly: AssemblyCopyright("Copyright (c) FFWFrostburn8 contributors")]

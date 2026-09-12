@@ -107,6 +107,10 @@ Assert-ProjectCheck -Condition ([int]$mod.sessionRows -eq 8) -Message "Session U
 Assert-ProjectCheck -Condition ([int]$mod.soloInviteSlots -eq 7) -Message "Solo host UI must target seven invite slots."
 Assert-ProjectCheck -Condition ([bool]$mod.requiresAllowMods) -Message "Expanded Session UI must require the game's Allow mods setting."
 Assert-ProjectCheck -Condition ([bool]$mod.uiSynchronizesPlayerRows) -Message "Session UI must synchronize real player rows before invite rows."
+Assert-ProjectCheck -Condition ($mod.deploymentMode -eq "host-only-experimental") `
+    -Message "Version 1.1.4 must be labelled as host-only experimental."
+Assert-ProjectCheck -Condition ($mod.vanillaClientCompatibility -eq "unverified") `
+    -Message "Vanilla-client compatibility must remain unverified until a live multiplayer test passes."
 Assert-ProjectCheck -Condition ($mod.license -eq "MIT") -Message "Owned mod source must remain MIT licensed."
 Assert-ProjectCheck -Condition ($mod.packageMode -eq "source-owned-lua" -and -not [bool]$mod.cookedAssetsIncluded) `
     -Message "The Frostburn release must contain only the owned Lua mod."
@@ -198,6 +202,22 @@ if ($sourceMod -and (Test-Path -LiteralPath $sourceMod -PathType Container)) {
             -Message "Owned Lua source is missing the Allow mods UI gate."
         Assert-ProjectCheck -Condition ($mainLua -match 'SessionUi .*READY=%s') `
             -Message "Owned Lua source is missing the verified Session UI runtime marker."
+        Assert-ProjectCheck -Condition ($mainLua -match '(?m)^local HOST_ONLY_EXPERIMENTAL\s*=\s*true\s*$' -and
+            $mainLua -match '(?m)^local VANILLA_MAX_PLAYERS\s*=\s*4\s*$') `
+            -Message "Owned Lua source is missing the explicit host-only experimental guardrails."
+        Assert-ProjectCheck -Condition ($mainLua -match [regex]::Escape('/Script/SteamCorePro.SteamUtilities:KickPlayer') -and
+            $mainLua -match [regex]::Escape('/Script/SteamCorePro.SteamProMatchmaking:CreateLobby') -and
+            $mainLua -match [regex]::Escape('/Script/SteamCorePro.SteamCoreProMatchmakingAsyncActionCreateLobby:CreateLobbyAsync')) `
+            -Message "Owned Lua source is missing a required host-side lobby or selective join hook path."
+        Assert-ProjectCheck -Condition ($mainLua -match 'HostOnlyMode=EXPERIMENTAL' -and
+            $mainLua -match 'HostOnlyRoomGate' -and
+            $mainLua -match 'HostOnlyLobbyWrite' -and
+            $mainLua -match 'HostOnlyJoinGuard action=BLOCK_EMPTY_JOIN_KICK') `
+            -Message "Owned Lua source is missing host-only runtime evidence markers."
+        Assert-ProjectCheck -Condition ($mainLua -match 'SessionUiGateRace' -and
+            $mainLua -match 'F_CreateSession-sticky' -and
+            $mainLua -match 'SessionUiVerified') `
+            -Message "Owned Lua source is missing the Allow Mods race fix or exact Invite-row evidence."
         Assert-ProjectCheck -Condition ($mainLua -notmatch '(?i)FFWMorePlayers|Nexus') `
             -Message "Owned Lua source contains a forbidden third-party mod reference."
         try {
@@ -263,6 +283,10 @@ if ((Test-Path -LiteralPath $installerSourcePath -PathType Leaf) -and
         -Message "The GUI installer is missing automatic rollback tracking."
     Assert-ProjectCheck -Condition ($installerSource -notmatch '(?i)powershell\.exe|pwsh\.exe') `
         -Message "The GUI installer must be native and must not wrap a PowerShell command."
+    Assert-ProjectCheck -Condition ($installerSource -match 'host-only-experimental' -and
+        $installerSource -match 'vanillaClientCompatibility' -and
+        $installerSource -match 'soloInviteSlots') `
+        -Message "The GUI installer is not validating the experimental deployment metadata."
     Assert-ProjectCheck -Condition ($installerManifest -match 'requestedExecutionLevel level="asInvoker"') `
         -Message "The GUI installer manifest must not demand elevation automatically."
     Assert-ProjectCheck -Condition ($installerBuild -match 'FFWFrostburn8\.Payload\.zip' -and

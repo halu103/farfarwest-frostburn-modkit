@@ -173,11 +173,15 @@ The installer takes a dated backup and refuses to write if the game is running.
 Launch the game normally, create a room with **Allow mods** enabled, open
 **Current Session**, then run the matching verification command.
 
-For the v1.1.3 member-row regression check, have at least five real players in
-that room and add `-RequireSynchronizedPlayerRows` to the command. A passing
-report must show `maximumSynchronizedPlayerRows` of at least `5` and
-`fifthPlayerRowDisplayed: true`. Also create a separate room without **Allow
-mods** and confirm that Current Session keeps the normal four-row layout.
+For the v1.1.4 host-only experiment, install the mod only on the host. Every
+guest must use the same game build with no `dwmapi.dll`/UE4SS mod installation.
+First verify the solo `1 member + 7 Invite` tuple with
+`-RequireSoloInviteUi`. Then have a fifth real player join and use
+`-RequireHostOnlyHooks -RequireHostOnlyJoin -RequireFivePlayerUi`. A passing
+five-player report must show the Steam lobby write, selective join-kick block,
+at least five observed players, and the exact visible `5 members + 3 Invite`
+tuple. Also create a separate room without **Allow mods** and confirm that
+Current Session keeps the normal four-row layout.
 
 Windows PowerShell 5.1:
 
@@ -198,9 +202,18 @@ pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLo
 ```
 
 Core startup can be automated, but multiplayer capacity cannot be honestly
-proven with one client. Create a hosted room, confirm
-`sessionParameterApplied=true`, then have a fifth real player join. Test all
-eight clients before labeling a release fully verified for eight players.
+proven with one client. Use this live matrix before removing the experimental
+label:
+
+1. Host only has v1.1.4; all guests are verified vanilla.
+2. Clients 2–4 join normally.
+3. Client 5 joins once by session code and once by Steam Invite.
+4. Clients 6–8 join and all eight names appear.
+5. The group travels to a map, advances one objective, and reconnects one guest.
+6. The host manually kicks a guest to prove moderation was not suppressed.
+
+The host log deliberately cannot prove what is installed on guest disks; record
+that separately instead of treating `ObservedPlayers=5` as proof by itself.
 
 If startup fails, close the game and restore the dated backup. Attach the fresh
 UE4SS log and crash dump to the issue instead of repeatedly launching with a

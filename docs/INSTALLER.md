@@ -19,8 +19,11 @@ generated source archive. See [publishing](PUBLISHING.md).
 4. Click **Install / Cài** and confirm.
 5. Start the game normally, create a room, and tick **Allow mods**.
 
-Version 1.1.3 expands the Session list only when the room's **Allow mods**
-status is active. With one host it should show seven Invite buttons; with five
+Version 1.1.4 is a **host-only experimental** build. Install it on the host
+only; test guests must use the same game version with no UE4SS/mod installation.
+It captures the room's **Allow mods** choice during room creation so a temporary
+widget-visibility race cannot collapse the interface to the vanilla three
+Invite buttons. With one host it should show seven Invite buttons; with five
 real players it should show five member names and three Invite buttons. A room
 created without **Allow mods** should retain the game's normal four-row UI.
 
@@ -62,11 +65,17 @@ verified installer as administrator; do not weaken folder-wide security.
 ## What a successful install proves
 
 A successful installer result proves that the correct files were installed on
-a supported local game build. It does not prove that five through eight real
-network clients can join. In game, **Current Session** should show eight rows
+a supported local host build. It does not prove that unmodified clients can
+join or remain synchronized. In game, **Current Session** should show eight rows
 (one host plus seven invite rows while alone). A fifth real player joining is
 the proof that the original four-player limit was exceeded; all eight real
 players must join to claim a complete eight-player test.
+
+For a valid host-only test, verify that every guest has neither `dwmapi.dll`
+nor a `ue4ss` folder in the game's `Binaries\Win64` directory. Join clients
+2–4, then the fifth through both session code and Steam Invite, then clients
+6–8. Also test map travel, an objective, reconnect, and a manual host kick.
+Keep the release labelled experimental until all of those checks pass.
 
 ## Build the installer from source
 

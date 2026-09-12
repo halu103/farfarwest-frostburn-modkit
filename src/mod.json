@@ -1,14 +1,16 @@
 {
   "schemaVersion": 1,
   "id": "FFWFrostburn8",
-  "name": "Far Far West Frostburn 8 Players",
-  "version": "1.1.3",
+  "name": "Far Far West Frostburn 8 Players - Host-Only Experimental",
+  "version": "1.1.4",
   "license": "MIT",
   "maxPlayers": 8,
   "sessionRows": 8,
   "soloInviteSlots": 7,
   "requiresAllowMods": true,
   "uiSynchronizesPlayerRows": true,
+  "deploymentMode": "host-only-experimental",
+  "vanillaClientCompatibility": "unverified",
   "packageMode": "source-owned-lua",
   "sourceDirectory": "Mods/FFWFrostburn8",
   "cookedAssetsIncluded": false

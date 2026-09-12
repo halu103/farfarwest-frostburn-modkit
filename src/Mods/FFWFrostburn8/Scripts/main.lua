@@ -4,15 +4,20 @@
 -- or code from another multiplayer mod.
 
 local MOD_ID = "FFWFrostburn8"
-local MOD_VERSION = "1.1.3"
+local MOD_VERSION = "1.1.4"
 local TARGET_MAX_PLAYERS = 8
+local VANILLA_MAX_PLAYERS = 4
 local TARGET_SESSION_ROWS = TARGET_MAX_PLAYERS
+local HOST_ONLY_EXPERIMENTAL = true
 local TAG = string.format("[%s v%s]", MOD_ID, MOD_VERSION)
 
 local CURRENT_SESSION_CLASS_PATH = "/Game/Interfaces/MainMenu/UI_Menu_Container_CurrentSession.UI_Menu_Container_CurrentSession_C"
 local INVITE_SESSION_ROW_CLASS_PATH = "/Game/Interfaces/MainMenu/UI_Menu_Button_Session_Invite.UI_Menu_Button_Session_Invite_C"
 local MEMBER_SESSION_ROW_CLASS_PATH = "/Game/Interfaces/MainMenu/UI_Menu_SessionMember.UI_Menu_SessionMember_C"
 local WIDGET_BLUEPRINT_LIBRARY_PATH = "/Script/UMG.Default__WidgetBlueprintLibrary"
+local CURRENT_SESSION_CONSTRUCT_PATH = CURRENT_SESSION_CLASS_PATH .. ":Construct"
+local CREATE_ROOM_FUNCTION_PATH = "/Game/Gamework/BP_Manager_Multiplayer.BP_Manager_Multiplayer_C:F_CreateSession"
+local KICK_PLAYER_FUNCTION_PATH = "/Script/SteamCorePro.SteamUtilities:KickPlayer"
 
 local trackedSessions = {}
 local trackedManagers = {}
@@ -35,6 +40,19 @@ local sessionUiScanTick = 0
 local widgetBlueprintLibrary = nil
 local inviteSessionRowClass = nil
 local memberSessionRowClass = nil
+local hostOnlyRoomGate = "unknown"
+local hostOnlyRoomGateSource = "none"
+local hostOnlyRoomCreationAllowMods = nil
+local hostOnlyRoomHookRegistered = false
+local hostOnlyJoinGuardRegistered = false
+local hostOnlyJoinGuardChecks = 0
+local hostOnlyJoinBlocks = 0
+local hostOnlyJoinAllows = 0
+local hostOnlyLobbyHookCount = 0
+local hostOnlyLobbyWrites = 0
+local hostOnlyLobbySkips = 0
+local sessionUiConstructHookRegistered = false
+local hostOnlyHooks = {}
 
 local function log(message)
     print(string.format("%s %s\n", TAG, message))
@@ -42,6 +60,20 @@ end
 
 local function logError(scope, value)
     log(string.format("ERROR scope=%s detail=%s", scope, tostring(value)))
+end
+
+local function setHostOnlyRoomGate(enabled, source)
+    if not HOST_ONLY_EXPERIMENTAL or type(enabled) ~= "boolean" then
+        return
+    end
+
+    local nextGate = enabled and "armed" or "disarmed"
+    local nextSource = tostring(source or "unknown")
+    if hostOnlyRoomGate ~= nextGate or hostOnlyRoomGateSource ~= nextSource then
+        hostOnlyRoomGate = nextGate
+        hostOnlyRoomGateSource = nextSource
+        log(string.format("HostOnlyRoomGate state=%s source=%s", hostOnlyRoomGate, hostOnlyRoomGateSource))
+    end
 end
 
 local function logUiErrorOnce(scope, value)
@@ -100,6 +132,197 @@ local function getClassName(object)
     return getObjectName(class)
 end
 
+local function readHookParam(parameter)
+    if parameter == nil then
+        return nil, false
+    end
+
+    local ok, value = pcall(function()
+        return parameter:get()
+    end)
+    if ok then
+        return value, true
+    end
+    return nil, false
+end
+
+local function readKickReason(parameter)
+    local value, readable = readHookParam(parameter)
+    if not readable or value == nil then
+        return nil, false
+    end
+    if type(value) == "string" then
+        return value, true
+    end
+
+    local ok, text = pcall(function()
+        return value:ToString()
+    end)
+    if ok and type(text) == "string" then
+        return text, true
+    end
+    return nil, false
+end
+
+local function getHostOnlyPlayerCount()
+    for _, className in ipairs({ "BP_GameState_C", "GameState", "GameStateBase" }) do
+        local stateOk, gameState = pcall(function()
+            return FindFirstOf(className)
+        end)
+        if stateOk and isValid(gameState) then
+            local arrayOk, players = pcall(function()
+                return gameState:GetPropertyValue("PlayerArray")
+            end)
+            if arrayOk and players ~= nil then
+                local countOk, count = pcall(function()
+                    return players:GetArrayNum()
+                end)
+                if not countOk then
+                    countOk, count = pcall(function()
+                        return #players
+                    end)
+                end
+                if countOk and type(count) == "number" and count >= 1 and count <= TARGET_MAX_PLAYERS then
+                    return count
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function registerHostOnlyRoomHook()
+    if not HOST_ONLY_EXPERIMENTAL or hostOnlyRoomHookRegistered then
+        return hostOnlyRoomHookRegistered
+    end
+
+    local ok, preId, postId = pcall(function()
+        return RegisterHook(CREATE_ROOM_FUNCTION_PATH, function(_, _, allowModsParameter)
+            local allowMods, readable = readHookParam(allowModsParameter)
+            if readable and type(allowMods) == "boolean" then
+                hostOnlyRoomCreationAllowMods = allowMods
+                setHostOnlyRoomGate(allowMods, "F_CreateSession")
+            else
+                hostOnlyRoomCreationAllowMods = nil
+                hostOnlyRoomGate = "unknown"
+                hostOnlyRoomGateSource = "F_CreateSession-unreadable"
+                log("HostOnlyRoomGate state=unknown source=F_CreateSession-unreadable")
+            end
+        end)
+    end)
+    if not ok then
+        if not describedFunctions["HostOnlyRoomHookDeferred"] then
+            describedFunctions["HostOnlyRoomHookDeferred"] = true
+            log(string.format("HostOnlyHook deferred path=%s detail=%s", CREATE_ROOM_FUNCTION_PATH, tostring(preId)))
+        end
+        return false
+    end
+
+    hostOnlyHooks[CREATE_ROOM_FUNCTION_PATH] = { preId = preId, postId = postId }
+    hostOnlyRoomHookRegistered = true
+    log(string.format("HostOnlyHook registered role=room-gate path=%s", CREATE_ROOM_FUNCTION_PATH))
+    return true
+end
+
+local function registerHostOnlyJoinGuard()
+    if not HOST_ONLY_EXPERIMENTAL or hostOnlyJoinGuardRegistered then
+        return hostOnlyJoinGuardRegistered
+    end
+
+    local ok, preId, postId = pcall(function()
+        return RegisterHook(
+            KICK_PLAYER_FUNCTION_PATH,
+            function(_, worldContextParameter, kickedPlayerParameter, kickReasonParameter, returnValueParameter)
+                hostOnlyJoinGuardChecks = hostOnlyJoinGuardChecks + 1
+
+                local worldContext, contextReadable = readHookParam(worldContextParameter)
+                local kickedPlayer, playerReadable = readHookParam(kickedPlayerParameter)
+                local reasonText, reasonReadable = readKickReason(kickReasonParameter)
+                local playerCount = getHostOnlyPlayerCount()
+                local contextIdentity = contextReadable and isValid(worldContext)
+                    and (getClassName(worldContext) .. "|" .. getObjectName(worldContext))
+                    or "<unreadable>"
+                local joinValidationSource = contextIdentity:find("BP_PlayerState_C", 1, true) ~= nil
+                    or contextIdentity:find("GM_Lobby_C", 1, true) ~= nil
+                local authorityOk, hasAuthority = pcall(function()
+                    return worldContext:HasAuthority()
+                end)
+                local emptyReason = reasonReadable and reasonText:match("^%s*$") ~= nil
+                local eligible = hostOnlyRoomGate == "armed"
+                    and contextReadable
+                    and playerReadable
+                    and isValid(kickedPlayer)
+                    and authorityOk
+                    and hasAuthority == true
+                    and joinValidationSource
+                    and emptyReason
+                    and type(playerCount) == "number"
+                    and playerCount >= VANILLA_MAX_PLAYERS
+                    and playerCount < TARGET_MAX_PLAYERS
+
+                if eligible then
+                    local targetCleared = pcall(function()
+                        kickedPlayerParameter:set(nil)
+                    end)
+                    local returnSuppressed = pcall(function()
+                        returnValueParameter:set(false)
+                    end)
+                    if targetCleared then
+                        hostOnlyJoinBlocks = hostOnlyJoinBlocks + 1
+                        log(string.format(
+                            "HostOnlyJoinGuard action=BLOCK_EMPTY_JOIN_KICK players=%d gate=%s source=%s target=%s returnSuppressed=%s blocks=%d",
+                            playerCount,
+                            hostOnlyRoomGate,
+                            contextIdentity,
+                            getObjectName(kickedPlayer),
+                            tostring(returnSuppressed),
+                            hostOnlyJoinBlocks
+                        ))
+                        return
+                    end
+                    log(string.format(
+                        "HostOnlyJoinGuard action=MUTATION_FAILED players=%s gate=%s source=%s",
+                        tostring(playerCount),
+                        hostOnlyRoomGate,
+                        contextIdentity
+                    ))
+                end
+
+                hostOnlyJoinAllows = hostOnlyJoinAllows + 1
+                if hostOnlyJoinAllows <= 30 then
+                    log(string.format(
+                        "HostOnlyJoinGuard action=ALLOW players=%s gate=%s authority=%s joinSource=%s reason=%s targetReadable=%s allows=%d",
+                        tostring(playerCount),
+                        hostOnlyRoomGate,
+                        tostring(authorityOk and hasAuthority == true),
+                        tostring(joinValidationSource),
+                        reasonReadable and string.format("%q", reasonText) or "<unreadable>",
+                        tostring(playerReadable and isValid(kickedPlayer)),
+                        hostOnlyJoinAllows
+                    ))
+                end
+            end
+        )
+    end)
+    if not ok then
+        if not describedFunctions["HostOnlyJoinGuardDeferred"] then
+            describedFunctions["HostOnlyJoinGuardDeferred"] = true
+            log(string.format("HostOnlyHook deferred path=%s detail=%s", KICK_PLAYER_FUNCTION_PATH, tostring(preId)))
+        end
+        return false
+    end
+
+    hostOnlyHooks[KICK_PLAYER_FUNCTION_PATH] = { preId = preId, postId = postId }
+    hostOnlyJoinGuardRegistered = true
+    log(string.format("HostOnlyHook registered role=selective-join-guard path=%s", KICK_PLAYER_FUNCTION_PATH))
+    return true
+end
+
+local function registerHostOnlyHooks()
+    registerHostOnlyRoomHook()
+    registerHostOnlyJoinGuard()
+end
+
 local function classifySessionRow(object)
     local identity = getClassName(object) .. "|" .. getObjectName(object)
     if identity:find("UI_Menu_Button_Session_Invite", 1, true)
@@ -125,6 +348,7 @@ local function inspectSessionRows(panel)
         invites = 0,
         members = 0,
         unknown = 0,
+        visible = 0,
         template = nil,
         inviteRows = {},
         memberRows = {},
@@ -141,6 +365,12 @@ local function inspectSessionRows(panel)
             table.insert(result.classes, "<invalid>")
         else
             table.insert(result.classes, getClassName(child))
+            local visibleOk, visible = pcall(function()
+                return child:IsVisible()
+            end)
+            if visibleOk and visible == true then
+                result.visible = result.visible + 1
+            end
             local rowType = classifySessionRow(child)
             if rowType == "invite" then
                 result.invites = result.invites + 1
@@ -191,22 +421,22 @@ local function resolveInviteSessionRowClass(template)
         return inviteSessionRowClass
     end
 
-    if isValid(template) then
-        local ok, class = pcall(function()
-            return template:GetClass()
-        end)
-        if ok and isValid(class) then
-            inviteSessionRowClass = class
-            return inviteSessionRowClass
-        end
-    end
-
     local ok, class = pcall(function()
         return StaticFindObject(INVITE_SESSION_ROW_CLASS_PATH)
     end)
     if ok and isValid(class) then
         inviteSessionRowClass = class
         return inviteSessionRowClass
+    end
+
+    if isValid(template) and getClassName(template):find("UI_Menu_Button_Session_Invite_C", 1, true) then
+        local templateOk, templateClass = pcall(function()
+            return template:GetClass()
+        end)
+        if templateOk and isValid(templateClass) then
+            inviteSessionRowClass = templateClass
+            return inviteSessionRowClass
+        end
     end
     return nil
 end
@@ -226,7 +456,7 @@ local function resolveWidgetBlueprintLibrary()
     return nil
 end
 
-local function createInviteSessionRow(sessionWidget, template)
+local function createInviteSessionRow(sessionWidget, template, playerSlotIndex)
     local class = resolveInviteSessionRowClass(template)
     if not isValid(class) then
         return nil, "UI_Menu_Button_Session_Invite_C is not loaded"
@@ -250,6 +480,16 @@ local function createInviteSessionRow(sessionWidget, template)
     end
     if not isValid(widget) then
         return nil, "WidgetBlueprintLibrary.Create returned no widget"
+    end
+
+
+    local idOk, idError = pcall(function()
+        -- The invite widget uses the same zero-based player-slot convention as
+        -- the member widget. Unique ids keep every extended button live.
+        widget:SetPropertyValue("id", playerSlotIndex - 1)
+    end)
+    if not idOk then
+        return nil, idError
     end
     return widget, nil
 end
@@ -306,6 +546,18 @@ local function getSessionModsAllowed(sessionWidget)
         return textBlock:IsVisible()
     end)
     if visibleOk and type(visible) == "boolean" then
+        if visible == false and hostOnlyRoomCreationAllowMods == true then
+            -- TextBlock_Cheats can still be collapsed while the Blueprint is
+            -- constructing. The value captured from F_CreateSession is the
+            -- authoritative choice for this room and must survive that race.
+            setHostOnlyRoomGate(true, "F_CreateSession-sticky")
+            logUiStateOnce(
+                "SessionUiGateRace",
+                string.format("widget=%s textVisible=false roomCreationAllowMods=true resolved=true", getObjectName(sessionWidget))
+            )
+            return true, nil
+        end
+        setHostOnlyRoomGate(visible, "CurrentSessionUi")
         return visible, nil
     end
     return nil, visible
@@ -430,6 +682,43 @@ local function removeOwnedSessionRows(panel, rows)
     return removed
 end
 
+local function refreshSessionLayout(sessionWidget, panel)
+    pcall(function()
+        panel:InvalidateLayoutAndVolatility()
+    end)
+    pcall(function()
+        sessionWidget:InvalidateLayoutAndVolatility()
+    end)
+    pcall(function()
+        sessionWidget:ForceLayoutPrepass()
+    end)
+end
+
+local function reportVerifiedSessionUi(sessionWidget, state, playerCount, expectedInvites, reason)
+    local ready = state.total == TARGET_SESSION_ROWS
+        and state.unknown == 0
+        and state.members == playerCount
+        and state.invites == expectedInvites
+        and state.visible == TARGET_SESSION_ROWS
+        and state.membersBeforeInvites
+    logUiStateOnce(
+        "SessionUiVerified",
+        string.format(
+            "widget=%s reason=%s players=%d members=%d invites=%d expectedInvites=%d total=%d visibleRows=%d READY=%s",
+            getObjectName(sessionWidget),
+            reason,
+            playerCount,
+            state.members,
+            state.invites,
+            expectedInvites,
+            state.total,
+            state.visible,
+            tostring(ready)
+        )
+    )
+    return ready
+end
+
 local function expandCurrentSessionUi(sessionWidget, reason)
     if not isValid(sessionWidget) then
         return false
@@ -486,8 +775,12 @@ local function expandCurrentSessionUi(sessionWidget, reason)
             end
             local baselineRows = 4
             local baselineInvites = math.max(0, baselineRows - baseline.members)
-            for _ = baseline.invites + 1, baselineInvites do
-                local widget, createError = createInviteSessionRow(sessionWidget, before.template)
+            for inviteIndex = baseline.invites + 1, baselineInvites do
+                local widget, createError = createInviteSessionRow(
+                    sessionWidget,
+                    before.template,
+                    baseline.members + inviteIndex
+                )
                 if not isValid(widget) then
                     logUiErrorOnce("SessionUiBaselineCreate", createError)
                     break
@@ -600,8 +893,10 @@ local function expandCurrentSessionUi(sessionWidget, reason)
         end)
         maximumInviteSlotsObserved = math.max(maximumInviteSlotsObserved, before.invites)
         maximumMemberRowsObserved = math.max(maximumMemberRowsObserved, before.members)
-        sessionUiExpanded = true
-        return true
+        refreshSessionLayout(sessionWidget, panel)
+        local verified = reportVerifiedSessionUi(sessionWidget, before, #playerStates, desiredInvites, reason)
+        sessionUiExpanded = sessionUiExpanded or verified
+        return verified
     end
 
     -- Remove every invite row before adding missing members. Otherwise a
@@ -692,8 +987,12 @@ local function expandCurrentSessionUi(sessionWidget, reason)
     end
 
     local invitesAdded = 0
-    for _ = 1, desiredInvites do
-        local widget, createError = createInviteSessionRow(sessionWidget, initial.template)
+    for inviteIndex = 1, desiredInvites do
+        local widget, createError = createInviteSessionRow(
+            sessionWidget,
+            initial.template,
+            #playerStates + inviteIndex
+        )
         if not isValid(widget) then
             logUiErrorOnce("SessionUiCreate", createError)
             break
@@ -720,12 +1019,19 @@ local function expandCurrentSessionUi(sessionWidget, reason)
         sessionWidget:SetPropertyValue("showedPlayers", #playerStates)
     end)
 
+    refreshSessionLayout(sessionWidget, panel)
+
+    -- Re-read after the layout prepass so a created-but-collapsed row cannot
+    -- be counted as a visible Invite slot.
+    after, afterError = inspectSessionRows(panel)
+    if after == nil then
+        logUiErrorOnce("SessionUiVerifyAfterLayout", afterError)
+        return false
+    end
+
     maximumInviteSlotsObserved = math.max(maximumInviteSlotsObserved, after.invites)
     maximumMemberRowsObserved = math.max(maximumMemberRowsObserved, after.members)
-    local ready = after.total == TARGET_SESSION_ROWS
-        and after.unknown == 0
-        and after.members == #playerStates
-        and after.invites == desiredInvites
+    local ready = reportVerifiedSessionUi(sessionWidget, after, #playerStates, desiredInvites, reason)
     sessionUiExpanded = sessionUiExpanded or ready
     if membersAdded > 0 or membersRemoved > 0 or invitesAdded > 0 or rowsRemoved > 0 then
         sessionUiAugmentations = sessionUiAugmentations + 1
@@ -865,6 +1171,39 @@ local function scanClass(className, callback)
     return count
 end
 
+local function registerSessionUiConstructHook()
+    if sessionUiConstructHookRegistered then
+        return true
+    end
+
+    local ok, preId, postId = pcall(function()
+        return RegisterHook(CURRENT_SESSION_CONSTRUCT_PATH, function()
+            -- Run after the Blueprint has had time to execute ClearChildren
+            -- and rebuild its vanilla four-row list.
+            for _, delayMs in ipairs({ 50, 250, 750, 1500 }) do
+                local capturedDelay = delayMs
+                ExecuteInGameThreadWithDelay(capturedDelay, function()
+                    scanClass("UI_Menu_Container_CurrentSession_C", function(object)
+                        expandCurrentSessionUi(object, "Construct+" .. tostring(capturedDelay) .. "ms")
+                    end)
+                end)
+            end
+        end)
+    end)
+    if not ok then
+        if not describedFunctions["SessionUiConstructHookDeferred"] then
+            describedFunctions["SessionUiConstructHookDeferred"] = true
+            log(string.format("SessionUiHook deferred path=%s detail=%s", CURRENT_SESSION_CONSTRUCT_PATH, tostring(preId)))
+        end
+        return false
+    end
+
+    hookedFunctions[CURRENT_SESSION_CONSTRUCT_PATH] = { preId = preId, postId = postId }
+    sessionUiConstructHookRegistered = true
+    log(string.format("SessionUiHook registered role=post-construct-reconcile path=%s", CURRENT_SESSION_CONSTRUCT_PATH))
+    return true
+end
+
 local function scanExisting(reason)
     local sessions = scanClass("GameSession", function(object)
         setObjectCap(object, "GameSession/" .. reason, trackedSessions)
@@ -895,6 +1234,12 @@ local capacityNames = {
     numpublicconnections = true,
     publicconnections = true,
 }
+
+local function isHostOnlyLobbyFunction(functionPath)
+    local lowerPath = tostring(functionPath):lower()
+    return lowerPath:find("steam", 1, true) ~= nil
+        and lowerPath:find("createlobby", 1, true) ~= nil
+end
 
 local function propertyName(property)
     local ok, value = pcall(function()
@@ -993,7 +1338,19 @@ local function setHookTarget(remoteParam, target, functionPath)
             tostring(writeOk and verifyOk and after == TARGET_MAX_PLAYERS),
             verifyOk and tostring(after) or "<unreadable>"
         ))
-        return
+        local applied = writeOk and verifyOk and after == TARGET_MAX_PLAYERS
+        if applied and isHostOnlyLobbyFunction(functionPath) then
+            hostOnlyLobbyWrites = hostOnlyLobbyWrites + 1
+            log(string.format(
+                "HostOnlyLobbyWrite function=%s target=%s BEFORE=%s AFTER=%s writes=%d",
+                functionPath,
+                target.parameter,
+                readOk and tostring(before) or "<unreadable>",
+                verifyOk and tostring(after) or "<unreadable>",
+                hostOnlyLobbyWrites
+            ))
+        end
+        return applied
     end
 
     local getOk, value = pcall(function()
@@ -1020,6 +1377,20 @@ local function setHookTarget(remoteParam, target, functionPath)
         tostring(writeOk and verifyOk and after == TARGET_MAX_PLAYERS),
         verifyOk and tostring(after) or "<unreadable>"
     ))
+    local applied = writeOk and verifyOk and after == TARGET_MAX_PLAYERS
+    if applied and isHostOnlyLobbyFunction(functionPath) then
+        hostOnlyLobbyWrites = hostOnlyLobbyWrites + 1
+        log(string.format(
+            "HostOnlyLobbyWrite function=%s target=%s.%s BEFORE=%s AFTER=%s writes=%d",
+            functionPath,
+            target.parameter,
+            target.field,
+            readOk and tostring(before) or "<unreadable>",
+            verifyOk and tostring(after) or "<unreadable>",
+            hostOnlyLobbyWrites
+        ))
+    end
+    return applied
 end
 
 local function registerCapacityHook(fn)
@@ -1057,6 +1428,16 @@ local function registerCapacityHook(fn)
 
     local hookOk, preId, postId = pcall(function()
         return RegisterHook(functionPath, function(_, ...)
+            if isHostOnlyLobbyFunction(functionPath) and hostOnlyRoomGate ~= "armed" then
+                hostOnlyLobbySkips = hostOnlyLobbySkips + 1
+                log(string.format(
+                    "HostOnlyLobbyWrite action=SKIP gate=%s function=%s skips=%d",
+                    hostOnlyRoomGate,
+                    functionPath,
+                    hostOnlyLobbySkips
+                ))
+                return
+            end
             local parameters = {...}
             for _, target in ipairs(targets) do
                 setHookTarget(parameters[target.index], target, functionPath)
@@ -1073,6 +1454,9 @@ local function registerCapacityHook(fn)
 
     hookedFunctions[functionPath] = { preId = preId, postId = postId }
     nativeHookCount = nativeHookCount + 1
+    if isHostOnlyLobbyFunction(functionPath) then
+        hostOnlyLobbyHookCount = hostOnlyLobbyHookCount + 1
+    end
     local targetNames = {}
     for _, target in ipairs(targets) do
         table.insert(targetNames, target.field and (target.parameter .. "." .. target.field) or target.parameter)
@@ -1085,12 +1469,20 @@ local knownFunctionPaths = {
     "/Script/FarFarWest.OnlineBlueprintAsyncCreate:MP_CreateSessionWithSettings",
     "/Script/FarFarWest.MultiplayerStatics:MP_UpdateSession",
     "/Script/OnlineSubsystemUtils.CreateSessionCallbackProxy:CreateSession",
+    "/Script/SteamCorePro.SteamCoreProCreateSession:CreateSteamCoreProSession",
+    "/Script/SteamCorePro.SteamCoreProUpdateSession:UpdateSteamCoreProSession",
+    "/Script/SteamCorePro.SteamProMatchmaking:CreateLobby",
+    "/Script/SteamCorePro.SteamCoreProMatchmakingAsyncActionCreateLobby:CreateLobbyAsync",
 }
 
 local knownClassPaths = {
     "/Script/FarFarWest.OnlineBlueprintAsyncCreate",
     "/Script/FarFarWest.MultiplayerStatics",
     "/Script/OnlineSubsystemUtils.CreateSessionCallbackProxy",
+    "/Script/SteamCorePro.SteamCoreProCreateSession",
+    "/Script/SteamCorePro.SteamCoreProUpdateSession",
+    "/Script/SteamCorePro.SteamProMatchmaking",
+    "/Script/SteamCorePro.SteamCoreProMatchmakingAsyncActionCreateLobby",
 }
 
 local function discoverCapacityHooks()
@@ -1119,7 +1511,7 @@ end
 
 local function printStatus(reason)
     log(string.format(
-        "Status reason=%s target=%d sessionCapApplied=%s managerCapApplied=%s nativeHooks=%d observedPlayers=%d sessionUiExpanded=%s maximumMemberRowsObserved=%d maximumInviteSlotsObserved=%d uiAugmentations=%d",
+        "Status reason=%s target=%d sessionCapApplied=%s managerCapApplied=%s nativeHooks=%d observedPlayers=%d sessionUiExpanded=%s maximumMemberRowsObserved=%d maximumInviteSlotsObserved=%d uiAugmentations=%d hostOnlyMode=%s roomGate=%s roomGateSource=%s roomHookReady=%s joinGuardReady=%s lobbyHooks=%d lobbyWrites=%d lobbySkips=%d joinChecks=%d joinBlocks=%d joinAllows=%d sessionUiConstructHookReady=%s",
         reason,
         TARGET_MAX_PLAYERS,
         tostring(sessionCapApplied),
@@ -1129,7 +1521,19 @@ local function printStatus(reason)
         tostring(sessionUiExpanded),
         maximumMemberRowsObserved,
         maximumInviteSlotsObserved,
-        sessionUiAugmentations
+        sessionUiAugmentations,
+        tostring(HOST_ONLY_EXPERIMENTAL),
+        hostOnlyRoomGate,
+        hostOnlyRoomGateSource,
+        tostring(hostOnlyRoomHookRegistered),
+        tostring(hostOnlyJoinGuardRegistered),
+        hostOnlyLobbyHookCount,
+        hostOnlyLobbyWrites,
+        hostOnlyLobbySkips,
+        hostOnlyJoinGuardChecks,
+        hostOnlyJoinBlocks,
+        hostOnlyJoinAllows,
+        tostring(sessionUiConstructHookRegistered)
     ))
 end
 
@@ -1143,6 +1547,7 @@ local function registerObjectNotifications()
         end)
         NotifyOnNewObject("/Game/Gamework/BP_Manager_Multiplayer.BP_Manager_Multiplayer_C", function(object)
             setObjectCap(object, "Manager/new", trackedManagers)
+            registerHostOnlyHooks()
             discoverCapacityHooks()
         end)
         NotifyOnNewObject(CURRENT_SESSION_CLASS_PATH, function(object)
@@ -1170,6 +1575,8 @@ local function registerGameStateHook()
         RegisterInitGameStatePostHook(function()
             ExecuteInGameThreadWithDelay(50, function()
                 scanExisting("InitGameStatePost")
+                registerHostOnlyHooks()
+                registerSessionUiConstructHook()
                 discoverCapacityHooks()
                 printStatus("InitGameStatePost")
             end)
@@ -1186,6 +1593,8 @@ local function registerConsoleCommand()
     local ok, value = pcall(function()
         RegisterConsoleCommandHandler("FFW8_Status", function()
             scanExisting("Console")
+            registerHostOnlyHooks()
+            registerSessionUiConstructHook()
             discoverCapacityHooks()
             printStatus("Console")
             return true
@@ -1199,33 +1608,47 @@ end
 log(string.format("Mod loaded - v%s", MOD_VERSION))
 log(string.format("Target MaxPlayers=%d", TARGET_MAX_PLAYERS))
 log(string.format("Target SessionRows=%d InviteSlotsWhenSolo=%d", TARGET_SESSION_ROWS, TARGET_SESSION_ROWS - 1))
-log("Implementation=source-owned-lua runtimeSessionUi=true allowModsUiGate=true synchronizedMemberRows=true cookedAssets=false")
+log("HostOnlyMode=EXPERIMENTAL vanillaClients=UNVERIFIED allowModsRequired=true manualKickPreserved=true")
+log("Implementation=source-owned-lua runtimeSessionUi=true allowModsUiGate=room-creation-sticky synchronizedMemberRows=true reflectedSteamLobbyCap=true selectiveJoinKickGuard=true cookedAssets=false")
 
 registerObjectNotifications()
 registerGameStateHook()
 registerConsoleCommand()
+registerHostOnlyHooks()
+registerSessionUiConstructHook()
 
 ExecuteInGameThreadWithDelay(100, function()
     scanExisting("Startup100ms")
+    registerHostOnlyHooks()
+    registerSessionUiConstructHook()
     discoverCapacityHooks()
 end)
 ExecuteInGameThreadWithDelay(1500, function()
     scanExisting("Startup1500ms")
+    registerHostOnlyHooks()
+    registerSessionUiConstructHook()
     discoverCapacityHooks()
     printStatus("Startup1500ms")
 end)
 ExecuteInGameThreadWithDelay(5000, function()
     scanExisting("Startup5000ms")
+    registerHostOnlyHooks()
+    registerSessionUiConstructHook()
     discoverCapacityHooks()
     printStatus("Startup5000ms")
 end)
 
-LoopInGameThreadWithDelay(1000, function()
+LoopInGameThreadWithDelay(500, function()
     applyTrackedCaps()
     sessionUiScanTick = sessionUiScanTick + 1
     if sessionUiScanTick % 2 == 0 then
         scanClass("UI_Menu_Container_CurrentSession_C", function(object)
             expandCurrentSessionUi(object, "Poll")
         end)
+    end
+    if sessionUiScanTick % 10 == 0 then
+        registerHostOnlyHooks()
+        registerSessionUiConstructHook()
+        discoverCapacityHooks()
     end
 end)

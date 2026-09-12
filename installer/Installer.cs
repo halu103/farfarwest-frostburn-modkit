@@ -118,7 +118,7 @@ namespace FFWFrostburn8Installer
 
         internal InstallerForm(string requestedGameRoot)
         {
-            Text = "FFWFrostburn8 v" + BuildInfo.ModVersion + " - Installer";
+            Text = "FFWFrostburn8 v" + BuildInfo.ModVersion + " - Host-Only Experimental";
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(760, 565);
             MinimumSize = new Size(720, 540);
@@ -130,7 +130,7 @@ namespace FFWFrostburn8Installer
             title.AutoSize = true;
             title.Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold, GraphicsUnit.Point);
             title.Location = new Point(24, 18);
-            title.Text = "Far Far West Frostburn - 8 Players";
+            title.Text = "Far Far West - 8 Players Host-Only Test";
             Controls.Add(title);
 
             var version = new Label();
@@ -138,7 +138,7 @@ namespace FFWFrostburn8Installer
             version.ForeColor = Color.DimGray;
             version.Location = new Point(27, 58);
             version.Text = "Mod v" + BuildInfo.ModVersion + "  |  Game " + BuildInfo.GameVersion +
-                "  |  Offline package";
+                "  |  Experimental offline package";
             Controls.Add(version);
 
             var warning = new Label();
@@ -149,9 +149,9 @@ namespace FFWFrostburn8Installer
             warning.Size = new Size(712, 72);
             warning.Padding = new Padding(10, 8, 10, 8);
             warning.Text =
-                "Close Far Far West before installing. The installer backs up and replaces the current " +
-                "dwmapi.dll and entire ue4ss folder. Existing UE4SS mods remain recoverable in the backup, " +
-                "but are not kept active automatically. The game is never started, closed, or restarted.";
+                "HOST ONLY / CHỈ HOST: do not install this test build on guests. Close Far Far West first. " +
+                "The current dwmapi.dll and ue4ss folder are backed up and replaced. The installer never " +
+                "starts, closes, or restarts the game.";
             Controls.Add(warning);
 
             var pathLabel = new Label();
@@ -300,6 +300,7 @@ namespace FFWFrostburn8Installer
             string message =
                 "Install FFWFrostburn8 v" + BuildInfo.ModVersion + " into:" +
                 Environment.NewLine + Environment.NewLine + gameRoot + Environment.NewLine + Environment.NewLine +
+                "HOST-ONLY EXPERIMENTAL: install on the host, not on guests. " +
                 "The current UE4SS folder and known legacy More Players files will be backed up and replaced. " +
                 "Continue?";
             if (MessageBox.Show(this, message, "Confirm installation", MessageBoxButtons.YesNo,
@@ -612,8 +613,12 @@ namespace FFWFrostburn8Installer
             RequireString(mod, "version", BuildInfo.ModVersion);
             RequireString(mod, "license", "MIT");
             RequireString(mod, "packageMode", "source-owned-lua");
+            RequireString(mod, "deploymentMode", "host-only-experimental");
+            RequireString(mod, "vanillaClientCompatibility", "unverified");
             RequireString(mod, "sourceTreeSha256", BuildInfo.SourceTreeSha256);
             RequireInteger(mod, "maxPlayers", 8);
+            RequireInteger(mod, "sessionRows", 8);
+            RequireInteger(mod, "soloInviteSlots", 7);
             if (!mod.ContainsKey("cookedAssetsIncluded") || Convert.ToBoolean(mod["cookedAssetsIncluded"], CultureInfo.InvariantCulture))
             {
                 throw new InvalidDataException("Package manifest permits cooked game assets.");

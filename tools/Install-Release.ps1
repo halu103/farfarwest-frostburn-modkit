@@ -147,6 +147,10 @@ if (
     $packageManifest.mod.id -ne $mod.id -or
     $packageManifest.mod.version -ne $mod.version -or
     [int]$packageManifest.mod.maxPlayers -ne [int]$mod.maxPlayers -or
+    [int]$packageManifest.mod.sessionRows -ne [int]$mod.sessionRows -or
+    [int]$packageManifest.mod.soloInviteSlots -ne [int]$mod.soloInviteSlots -or
+    $packageManifest.mod.deploymentMode -ne $mod.deploymentMode -or
+    $packageManifest.mod.vanillaClientCompatibility -ne $mod.vanillaClientCompatibility -or
     $packageManifest.mod.license -ne $mod.license -or
     $packageManifest.mod.packageMode -ne $mod.packageMode -or
     [bool]$packageManifest.mod.cookedAssetsIncluded

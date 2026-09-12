@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.4 - 2026-09-12
+
+- Add an explicitly labelled host-only experimental mode for testing vanilla
+  guests while only the host runs UE4SS and `FFWFrostburn8`.
+- Extend reflected capacity discovery to SteamCorePro create/update-session and
+  lobby-create functions, including the exact `MaxMembers` field.
+- Add a fail-closed join guard that suppresses only empty-reason automatic
+  kicks from known lobby/player-state validation sources in an **Allow Mods**
+  room with 4–7 players. Manual kicks, bans, reason-bearing kicks, non-host
+  calls, and ninth-player attempts are preserved.
+- Capture **Allow Mods** at room creation and keep that value through the
+  Current Session widget-construction race, fixing the erroneous vanilla
+  `1 host + 3 Invite` layout in a mod-enabled solo room.
+- Give every generated Invite widget a unique slot id, reconcile after widget
+  construction, refresh the layout, and emit exact `1+7` and `5+3` UI evidence.
+- Add strict runtime-report switches for host-only hooks, a fifth-player join,
+  seven solo Invite rows, and the five-player/three-Invite layout.
+- Keep vanilla-client compatibility explicitly unverified: the build and
+  offline tests do not replace a real clean-client multiplayer test.
+
 ## 1.1.3 - 2026-09-11
 
 - Synchronize `UI_Menu_SessionMember` rows with the live `PlayerArray` before

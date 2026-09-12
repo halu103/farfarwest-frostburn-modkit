@@ -144,6 +144,7 @@ FFWFrostburn8 v$($mod.version) - Far Far West 8 Players
 =======================================================
 
 Danh cho / For: Far Far West $($lock.target.productVersion), Windows x64
+Che do / Mode: HOST-ONLY EXPERIMENTAL - VANILLA CLIENTS UNVERIFIED
 
 CAI DAT / INSTALL
 1. Dong Far Far West hoan toan. / Close Far Far West completely.
@@ -153,7 +154,9 @@ CAI DAT / INSTALL
    Check the game path, click "Install / Cai", and wait for success.
 4. Mo game binh thuong, tao phong va tich "Allow mods".
    Start the game normally, create a room, and tick "Allow mods".
-5. Khi mot minh: kiem tra 7 nut Invite. Khi co 5 nguoi: kiem tra du 5 ten va
+5. Chi host cai ban nay; may khach de game nguyen ban, khong cai UE4SS/mod.
+   Install this build on the host only; guests must remain vanilla.
+6. Khi mot minh: kiem tra 7 nut Invite. Khi co 5 nguoi: kiem tra du 5 ten va
    con 3 nut Invite. Neu khong tick "Allow mods", giao dien phai giu 4 dong.
    Alone: verify 7 Invite buttons. With 5 players: verify all 5 names and 3
    Invite buttons. Without "Allow mods", the UI must keep its normal 4 rows.
@@ -172,7 +175,10 @@ LUU Y / IMPORTANT
 - Build nay chua co chu ky so; hay doi chieu SHA256SUMS.txt neu Windows hien
   canh bao unknown publisher. Khong tat Windows Defender.
 - A successful install does not by itself prove eight real network clients.
-  Test a fifth real player, then all eight, before claiming full validation.
+  Test a fifth vanilla player via session code and Steam Invite, then all eight,
+  map travel, an objective, reconnect, and manual kick before claiming support.
+- Day la ban thu nghiem. Khong coi 7 nut Invite la bang chung client vanilla vao duoc.
+  This is experimental. Seven Invite buttons do not prove vanilla clients can join.
 
 SHA-256 cua file cai dat nam trong SHA256SUMS.txt.
 The installer SHA-256 is recorded in SHA256SUMS.txt.
