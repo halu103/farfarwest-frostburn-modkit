@@ -312,6 +312,10 @@ if ((Test-Path -LiteralPath $uninstallerSourcePath -PathType Leaf) -and
     Assert-ProjectCheck -Condition ($uninstallerSource -match 'UninstallSafety' -and
         $uninstallerSource -match 'rolled-back-after-uninstall-error') `
         -Message "The native uninstaller is missing its safety backup or automatic rollback."
+    Assert-ProjectCheck -Condition ($uninstallerSource -match 'UninstallModOnly' -and
+        $uninstallerSource -match 'Removed project-owned path' -and
+        $uninstallerSource -match 'restoreSnapshotCheckBox\.Checked = false') `
+        -Message "The native uninstaller is missing safe default mod-only removal."
     Assert-ProjectCheck -Condition ($uninstallerSource -match 'FFWFrostburn8-Installer-v1' -and
         $uninstallerSource -match 'EnsureGameNotRunning' -and
         $uninstallerSource -match 'AcquireGameStartGuard') `

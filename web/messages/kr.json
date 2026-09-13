@@ -110,7 +110,7 @@
 	"faq_guests_q": "친구들도 모드를 설치해야 하나요?",
 	"faq_guests_a": "현재 호스트 전용 실험에서는 필요하지 않습니다. 게스트는 순정 상태를 유지하고 동일한 게임 버전을 사용해야 합니다. 4명을 초과하는 호환성은 아직 검증되지 않았음을 알려 주세요.",
 	"faq_remove_q": "모드를 제거하거나 이전 설정으로 복원하려면 어떻게 하나요?",
-	"faq_remove_a": "게임을 종료하고 압축을 푼 릴리스의 FFWFrostburn8-Uninstall.exe를 실행하세요. 도구는 변경 전에 별도의 안전 백업을 만든 뒤 검증된 최신 설치 전 백업을 복원합니다. 원본 백업이 없거나 손상된 경우 게임 파일을 변경하지 않고 중지합니다.",
+	"faq_remove_a": "게임을 종료하고 압축을 푼 릴리스의 FFWFrostburn8-Uninstall.exe를 실행하세요. 기본 모드는 검증된 안전 백업을 만든 뒤 깨끗한 백업이 없어도 FFWFrostburn8만 제거하고 UE4SS와 다른 모드는 유지합니다. 선택 사항인 Advanced 모드는 전체 깨끗한 스냅샷을 복원하며, 스냅샷이 없거나 손상되면 쓰기를 거부합니다. 이후의 UE4SS 변경 사항은 되돌려질 수 있습니다.",
 	"footer_notice": "독립 커뮤니티 프로젝트 · MIT 라이선스 모드 소스",
 	"footer_disclaimer": "Evil Raptor, Fireshine Games 또는 Valve와 제휴하지 않았습니다. Far Far West 이름과 게임 자산의 권리는 각 소유자에게 있습니다.",
 	"footer_github": "GitHub 저장소",

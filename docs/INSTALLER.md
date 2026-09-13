@@ -55,20 +55,24 @@ success dialog if you may want to return to the previous UE4SS setup later.
 1. Close Far Far West.
 2. Run `FFWFrostburn8-Uninstall.exe` from the extracted release bundle.
 3. Verify the detected game folder.
-4. Click **Uninstall / Gỡ** and confirm.
+4. Leave **Advanced** clear, click **Uninstall / Gỡ**, and confirm.
 
-The uninstaller does not blindly delete `dwmapi.dll` or the complete `ue4ss`
-directory. It first verifies that the active installation belongs to this
-project, selects the newest valid backup whose saved state does not contain
-FFWFrostburn8, validates its recorded hashes, and creates an additional safety
-backup of the current state. It then restores the pre-install files. A failure
-triggers an automatic restore from the safety backup.
+The recommended mode verifies that the active installation belongs to this
+project, creates and verifies an additional safety backup, then removes only
+`ue4ss\Mods\FFWFrostburn8` and `ue4ss\FARFARWEST_MODKIT_MANIFEST.json`. It does
+not remove `dwmapi.dll`, the complete `ue4ss` directory, its configuration, or
+unrelated mods. A failure triggers an automatic restore from the safety backup.
+This mode works even if Setup was first run over an older/manual copy and every
+historical backup already contains FFWFrostburn8.
 
-If the original backup is missing or damaged, the operation stops without
-changing game files. The restored state may include UE4SS or legacy mod files
-that existed before FFWFrostburn8 was installed. Uninstallation intentionally
-does not require the game executable to remain on the old supported version,
-so the mod can still be removed after a game update.
+The unchecked-by-default **Advanced** option instead selects the newest clean
+pre-install snapshot, validates every recorded hash, and restores the complete
+managed state. It stops before writing if that snapshot is missing or damaged.
+Because a full snapshot replacement can revert UE4SS changes or unrelated mods
+added later, use it only when deliberately returning to that older state.
+
+Neither mode requires the game executable to remain on the old supported
+version, so the mod can still be removed after a game update.
 
 ## Windows security notice
 
@@ -156,8 +160,9 @@ powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-Uni
 ```
 
 PowerShell 7+ uses `pwsh.exe` with the same script paths. The tests install and
-uninstall only inside `work/uninstaller-e2e`; they also corrupt a backup and
-inject a restore failure to prove refusal-before-write and complete rollback.
+uninstall only inside `work/uninstaller-e2e`; they exercise clean-snapshot,
+legacy-upgrade, and missing-backup histories, preserve unrelated mods, corrupt
+a backup, and inject failures into both removal modes to prove complete rollback.
 
 Use `$PSVersionTable.PSEdition` and `$PSVersionTable.PSVersion` to choose the
 correct maintainer command. See [PowerShell compatibility](POWERSHELL.md) for

@@ -4,14 +4,19 @@
 
 - Add a standalone native x64 `FFWFrostburn8-Uninstall.exe` so players no
   longer need PowerShell or manual folder deletion to remove the mod.
-- Restore the newest verified backup from before FFWFrostburn8 was installed,
-  including any UE4SS state that existed at that point.
+- Make mod-only removal the safe default: remove only the project-owned mod
+  directory and ownership marker while preserving UE4SS and unrelated mods.
+- Keep complete pre-install snapshot restoration as an explicitly selected
+  advanced recovery mode, with full hash validation before any game-file write.
+- Support older/manual upgrade histories that have no clean pre-install backup;
+  reinstalling over an existing mod is no longer a blocker for normal removal.
 - Refuse to change files when the game is running, the active installation is
-  not owned by this project, or the original backup is missing or damaged.
+  not owned by this project, or an advanced snapshot is missing or damaged.
 - Create and verify a separate pre-uninstall safety backup; automatically roll
   back to it if any restore operation fails.
-- Add sandbox tests covering complete restoration, repeat-run refusal,
-  corrupted-backup refusal, injected-failure rollback, and game EXE integrity.
+- Add sandbox tests covering complete restoration, legacy and missing-backup
+  mod-only removal, unrelated-mod preservation, repeat-run refusal,
+  corrupted-backup refusal, both rollback paths, and game EXE integrity.
 - Include Setup and Uninstall executables together at the release ZIP root with
   SHA-256 entries for both files.
 

@@ -221,10 +221,14 @@ GO CAI DAT / UNINSTALL
 1. Dong Far Far West hoan toan. / Close Far Far West completely.
 2. Chay $friendlyUninstallerName va kiem tra dung thu muc game.
    Run $friendlyUninstallerName and verify the selected game folder.
-3. Bam "Uninstall / Go". Chuong trinh chi khoi phuc backup sach da xac minh.
-   Click "Uninstall / Go". The tool restores only a verified clean backup.
-4. Neu backup bi thieu hoac sai hash, chuong trinh se dung ma khong xoa thu cong.
-   If the backup is missing or damaged, it stops without deleting files manually.
+3. De trong o Advanced, bam "Uninstall / Go" de chi go FFWFrostburn8; UE4SS va
+   cac mod khac duoc giu nguyen.
+   Leave Advanced unchecked and click "Uninstall / Go" to remove only
+   FFWFrostburn8; UE4SS and other mods are preserved.
+4. Advanced chi dung khi co y khoi phuc toan bo snapshot sach truoc khi cai.
+   Use Advanced only when intentionally restoring the complete clean snapshot.
+   Thay doi UE4SS/mod sau snapshot co the bi hoan tac; backup thieu/hong se bi tu choi.
+   Later UE4SS/mod changes may be reverted; a missing/damaged snapshot is refused.
 
 Khong can PowerShell. Bo cai khong tai them mod cua nguoi khac va khong tu mo,
 dong hay khoi dong lai game. Neu game dang chay, bo cai se tu choi ghi file.

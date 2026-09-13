@@ -110,7 +110,7 @@
 	"faq_guests_q": "Müssen meine Freunde den Mod ebenfalls installieren?",
 	"faq_guests_a": "Nicht für das aktuelle Host-only-Experiment. Gäste sollten das Spiel unverändert lassen und dieselbe Spielversion verwenden. Weise sie darauf hin, dass die Kompatibilität mit mehr als vier Spielern noch nicht vollständig verifiziert wurde.",
 	"faq_remove_q": "Wie entferne ich den Mod oder stelle eine frühere Installation wieder her?",
-	"faq_remove_a": "Schließe das Spiel und starte FFWFrostburn8-Uninstall.exe aus dem entpackten Release. Das Tool prüft und stellt die neueste saubere Sicherung vor der Installation wieder her und erstellt zuvor eine zusätzliche Sicherheitssicherung. Fehlt die ursprüngliche Sicherung oder ist sie beschädigt, werden keine Spieldateien geändert.",
+	"faq_remove_a": "Schließe das Spiel und starte FFWFrostburn8-Uninstall.exe aus dem entpackten Release. Der Standardmodus erstellt eine geprüfte Sicherheitssicherung, entfernt nur FFWFrostburn8 und behält UE4SS sowie andere Mods bei, auch wenn keine saubere Sicherung existiert. Der optionale Advanced-Modus stellt einen vollständigen sauberen Snapshot wieder her und schreibt nichts, wenn dieser fehlt oder beschädigt ist; spätere UE4SS-Änderungen können dabei zurückgesetzt werden.",
 	"footer_notice": "Unabhängiges Community-Projekt · Mod-Quellcode unter MIT-Lizenz",
 	"footer_disclaimer": "Nicht mit Evil Raptor, Fireshine Games oder Valve verbunden. Namen und Spielinhalte von Far Far West gehören den jeweiligen Rechteinhabern.",
 	"footer_github": "GitHub-Repository",

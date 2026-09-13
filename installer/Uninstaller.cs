@@ -105,6 +105,7 @@ namespace FFWFrostburn8Installer
         private readonly Button uninstallButton;
         private readonly Button closeButton;
         private readonly Label statusLabel;
+        private readonly CheckBox restoreSnapshotCheckBox;
         private bool busy;
 
         internal UninstallerForm(string requestedGameRoot)
@@ -128,7 +129,7 @@ namespace FFWFrostburn8Installer
             version.AutoSize = true;
             version.ForeColor = Color.DimGray;
             version.Location = new Point(27, 58);
-            version.Text = "Mod v" + BuildInfo.ModVersion + "  |  Restore-based removal";
+            version.Text = "Mod v" + BuildInfo.ModVersion + "  |  Safe mod removal";
             Controls.Add(version);
 
             var warning = new Label();
@@ -139,9 +140,9 @@ namespace FFWFrostburn8Installer
             warning.Size = new Size(712, 72);
             warning.Padding = new Padding(10, 8, 10, 8);
             warning.Text =
-                "Close Far Far West first. This tool restores the newest verified clean backup from before " +
-                "FFWFrostburn8 was installed. It never starts, closes, or restarts the game and refuses to " +
-                "continue if the backup is missing or damaged.";
+                "Close Far Far West first. The default mode removes only FFWFrostburn8 and preserves UE4SS and " +
+                "other mods. A verified safety backup is created before every change. This tool never starts, " +
+                "closes, or restarts the game.";
             Controls.Add(warning);
 
             var pathLabel = new Label();
@@ -164,11 +165,20 @@ namespace FFWFrostburn8Installer
             browseButton.Click += BrowseButtonClick;
             Controls.Add(browseButton);
 
+            restoreSnapshotCheckBox = new CheckBox();
+            restoreSnapshotCheckBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            restoreSnapshotCheckBox.Location = new Point(24, 232);
+            restoreSnapshotCheckBox.Size = new Size(712, 30);
+            restoreSnapshotCheckBox.Text =
+                "Advanced: restore the complete pre-install snapshot (may revert later UE4SS changes)";
+            restoreSnapshotCheckBox.Checked = false;
+            Controls.Add(restoreSnapshotCheckBox);
+
             statusLabel = new Label();
             statusLabel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             statusLabel.AutoEllipsis = true;
             statusLabel.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold, GraphicsUnit.Point);
-            statusLabel.Location = new Point(24, 245);
+            statusLabel.Location = new Point(24, 269);
             statusLabel.Size = new Size(712, 24);
             statusLabel.Text = "Ready / Sẵn sàng";
             Controls.Add(statusLabel);
@@ -177,11 +187,11 @@ namespace FFWFrostburn8Installer
             logTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             logTextBox.BackColor = Color.White;
             logTextBox.Font = new Font("Consolas", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
-            logTextBox.Location = new Point(24, 273);
+            logTextBox.Location = new Point(24, 297);
             logTextBox.Multiline = true;
             logTextBox.ReadOnly = true;
             logTextBox.ScrollBars = ScrollBars.Vertical;
-            logTextBox.Size = new Size(712, 192);
+            logTextBox.Size = new Size(712, 168);
             Controls.Add(logTextBox);
 
             uninstallButton = new Button();
@@ -264,11 +274,16 @@ namespace FFWFrostburn8Installer
                 return;
             }
 
+            bool restoreSnapshot = restoreSnapshotCheckBox.Checked;
+            string modeMessage = restoreSnapshot ?
+                "ADVANCED FULL RESTORE: the newest verified clean snapshot will replace the managed UE4SS " +
+                "state. UE4SS changes made after that snapshot may be reverted." :
+                "RECOMMENDED MOD-ONLY REMOVAL: only FFWFrostburn8 and its project marker will be removed. " +
+                "UE4SS and other mods will be preserved.";
             string message =
                 "Uninstall FFWFrostburn8 from:" + Environment.NewLine + Environment.NewLine + gameRoot +
-                Environment.NewLine + Environment.NewLine +
-                "The tool will restore the newest verified backup that does not contain FFWFrostburn8. " +
-                "This can also restore UE4SS or legacy mod files that existed before installation. Continue?";
+                Environment.NewLine + Environment.NewLine + modeMessage + Environment.NewLine + Environment.NewLine +
+                "Continue?";
             if (MessageBox.Show(this, message, "Confirm uninstallation", MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
             {
@@ -300,15 +315,22 @@ namespace FFWFrostburn8Installer
                             writer.WriteLine(DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture) + " " + line);
                             AppendLog(line);
                         };
-                        return UninstallerEngine.Uninstall(gameRoot, logger);
+                        return restoreSnapshot ?
+                            UninstallerEngine.Uninstall(gameRoot, logger) :
+                            UninstallerEngine.UninstallModOnly(gameRoot, logger);
                     }
                 });
 
                 statusLabel.ForeColor = Color.DarkGreen;
                 statusLabel.Text = "Uninstalled successfully / Gỡ cài đặt thành công";
+                string removalDetails = String.Equals(result.RemovalMode, "restored-clean-backup",
+                    StringComparison.Ordinal) ?
+                    "Mode: verified pre-install backup restored." + Environment.NewLine +
+                    "Restored from: " + result.RestoredBackupDirectory :
+                    "Mode: mod-only fallback. UE4SS and other mods were preserved.";
                 MessageBox.Show(this,
                     "FFWFrostburn8 was removed successfully." + Environment.NewLine +
-                    "Restored from: " + result.RestoredBackupDirectory + Environment.NewLine +
+                    removalDetails + Environment.NewLine +
                     "Safety backup: " + result.SafetyBackupDirectory + Environment.NewLine +
                     "Log: " + logPath + Environment.NewLine + Environment.NewLine +
                     "The uninstaller did not start the game.",
@@ -354,6 +376,7 @@ namespace FFWFrostburn8Installer
             browseButton.Enabled = !value;
             gameRootTextBox.Enabled = !value;
             closeButton.Enabled = !value;
+            restoreSnapshotCheckBox.Enabled = !value;
             UseWaitCursor = value;
         }
 
@@ -385,6 +408,7 @@ namespace FFWFrostburn8Installer
     internal sealed class UninstallResult
     {
         internal string GameRoot { get; set; }
+        internal string RemovalMode { get; set; }
         internal string RestoredBackupDirectory { get; set; }
         internal string SafetyBackupDirectory { get; set; }
     }
@@ -406,6 +430,11 @@ namespace FFWFrostburn8Installer
             @"FarFarWest\Content\Paks\~mods\ZZZ_FFWMorePlayers_P.ucas",
             @"FarFarWest\Content\Paks\~mods\ZZZ_FFWMorePlayers_P.utoc"
         };
+
+        private const string OwnedModRelativePath =
+            @"FarFarWest\Binaries\Win64\ue4ss\Mods\FFWFrostburn8";
+        private const string OwnershipMarkerRelativePath =
+            @"FarFarWest\Binaries\Win64\ue4ss\FARFARWEST_MODKIT_MANIFEST.json";
 
         internal static void VerifyBuild(Action<string> log)
         {
@@ -455,6 +484,29 @@ namespace FFWFrostburn8Installer
         internal static UninstallResult Uninstall(string requestedGameRoot, Action<string> log,
             string backupRootOverride, Action<int> faultInjector)
         {
+            return RunLocked(requestedGameRoot, log, backupRootOverride, faultInjector, true);
+        }
+
+        internal static UninstallResult UninstallModOnly(string requestedGameRoot, Action<string> log)
+        {
+            return UninstallModOnly(requestedGameRoot, log, null, null);
+        }
+
+        internal static UninstallResult UninstallModOnly(string requestedGameRoot, Action<string> log,
+            string backupRootOverride)
+        {
+            return UninstallModOnly(requestedGameRoot, log, backupRootOverride, null);
+        }
+
+        internal static UninstallResult UninstallModOnly(string requestedGameRoot, Action<string> log,
+            string backupRootOverride, Action<int> faultInjector)
+        {
+            return RunLocked(requestedGameRoot, log, backupRootOverride, faultInjector, false);
+        }
+
+        private static UninstallResult RunLocked(string requestedGameRoot, Action<string> log,
+            string backupRootOverride, Action<int> faultInjector, bool restoreSnapshot)
+        {
             if (log == null)
             {
                 throw new ArgumentNullException("log");
@@ -477,7 +529,8 @@ namespace FFWFrostburn8Installer
                         throw new InvalidOperationException(
                             "Another FFWFrostburn8 installer or uninstaller is already running.");
                     }
-                    return UninstallExclusive(requestedGameRoot, log, backupRootOverride, faultInjector);
+                    return UninstallExclusive(requestedGameRoot, log, backupRootOverride, faultInjector,
+                        restoreSnapshot);
                 }
                 finally
                 {
@@ -490,7 +543,7 @@ namespace FFWFrostburn8Installer
         }
 
         private static UninstallResult UninstallExclusive(string requestedGameRoot, Action<string> log,
-            string backupRootOverride, Action<int> faultInjector)
+            string backupRootOverride, Action<int> faultInjector, bool restoreSnapshot)
         {
             GameValidator.EnsureGameNotRunning();
             string gameRoot = ValidateGameRootShape(requestedGameRoot, log);
@@ -501,8 +554,21 @@ namespace FFWFrostburn8Installer
                     "FFWFrostburn8", "Backups") :
                 Path.GetFullPath(backupRootOverride);
             FileSystem.AssertTreesAreSeparate(gameRoot, backupRoot);
-            BackupCandidate source = FindCleanBackup(gameRoot, backupRoot, log);
-            ValidateBackupCandidate(source, gameRoot, backupRoot);
+            BackupCandidate source = null;
+            if (restoreSnapshot)
+            {
+                source = FindCleanBackup(gameRoot, backupRoot, log);
+                if (source == null)
+                {
+                    throw new InvalidDataException(
+                        "No verified clean pre-install backup was found. Full snapshot restore was not started. " +
+                        "Clear the Advanced checkbox to remove only FFWFrostburn8 while preserving UE4SS.");
+                }
+            }
+            else
+            {
+                log("Using recommended mod-only removal; clean snapshot discovery was not requested.");
+            }
 
             string safetyRoot = String.IsNullOrWhiteSpace(backupRootOverride) ?
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -520,19 +586,31 @@ namespace FFWFrostburn8Installer
                 log("Game is closed and its executable is locked against startup during file changes.");
                 try
                 {
-                    RestoreRecords(gameRoot, source.Directory, source.Manifest.records, log, faultInjector);
-                    if (IsOwnedInstallation(gameRoot))
+                    string removalMode;
+                    if (source != null)
                     {
-                        throw new IOException("The selected backup still contains FFWFrostburn8.");
+                        RestoreRecords(gameRoot, source.Directory, source.Manifest.records, log, faultInjector);
+                        if (IsOwnedInstallation(gameRoot))
+                        {
+                            throw new IOException("The selected backup still contains FFWFrostburn8.");
+                        }
+                        removalMode = "restored-clean-backup";
+                        log("FFWFrostburn8 was removed and the verified pre-install state was restored.");
                     }
-                    safetyManifest.status = "uninstalled";
+                    else
+                    {
+                        RemoveOwnedModOnly(gameRoot, log, faultInjector);
+                        removalMode = "mod-only";
+                        log("FFWFrostburn8 was removed. UE4SS and all other mod directories were preserved.");
+                    }
+                    safetyManifest.status = source != null ? "uninstalled" : "uninstalled-mod-only";
                     safetyManifest.completedAtUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
                     WriteManifest(safetyManifestPath, safetyManifest);
-                    log("FFWFrostburn8 was removed and the verified pre-install state was restored.");
                     return new UninstallResult
                     {
                         GameRoot = gameRoot,
-                        RestoredBackupDirectory = source.Directory,
+                        RemovalMode = removalMode,
+                        RestoredBackupDirectory = source == null ? null : source.Directory,
                         SafetyBackupDirectory = safetyDirectory
                     };
                 }
@@ -611,8 +689,8 @@ namespace FFWFrostburn8Installer
         {
             if (!Directory.Exists(backupRoot))
             {
-                throw new DirectoryNotFoundException(
-                    "No FFWFrostburn8 backup directory was found. Uninstallation was stopped safely: " + backupRoot);
+                log("No backup directory exists for advanced full restore: " + backupRoot);
+                return null;
             }
             FileSystem.AssertNoReparsePoints(backupRoot);
             var candidates = new List<BackupCandidate>();
@@ -650,17 +728,63 @@ namespace FFWFrostburn8Installer
                     // Invalid candidates are ignored here and never reach a write operation.
                 }
             }
-            BackupCandidate selected = candidates
-                .OrderByDescending(value => value.CreatedAtUtc)
-                .FirstOrDefault();
-            if (selected == null)
+            var rejected = new List<string>();
+            foreach (BackupCandidate candidate in candidates.OrderByDescending(value => value.CreatedAtUtc))
+            {
+                try
+                {
+                    ValidateBackupCandidate(candidate, gameRoot, backupRoot);
+                    log("Selected clean pre-install backup: " + candidate.Directory);
+                    return candidate;
+                }
+                catch (Exception ex)
+                {
+                    rejected.Add(Path.GetFileName(candidate.Directory) + ": " + ex.Message);
+                    log("Rejected clean backup candidate " + candidate.Directory + ": " + ex.Message);
+                }
+            }
+            if (rejected.Count > 0)
             {
                 throw new InvalidDataException(
-                    "No verified clean pre-install backup was found for this game folder. " +
-                    "Nothing was changed; do not delete the UE4SS folder manually.");
+                    "Clean backup candidates were found, but all failed integrity validation. Nothing was " +
+                    "changed. " + String.Join(" | ", rejected));
             }
-            log("Selected clean pre-install backup: " + selected.Directory);
-            return selected;
+            if (candidates.Count == 0)
+            {
+                log("No verified clean pre-install backup was found for advanced full restore.");
+                return null;
+            }
+            return null;
+        }
+
+        private static void RemoveOwnedModOnly(string gameRoot, Action<string> log,
+            Action<int> faultInjector)
+        {
+            string[] ownedPaths = new[] { OwnedModRelativePath, OwnershipMarkerRelativePath };
+            int step = 0;
+            foreach (string relativePath in ownedPaths)
+            {
+                step++;
+                if (faultInjector != null)
+                {
+                    faultInjector(step);
+                }
+                string target = FileSystem.CombineInside(gameRoot, relativePath);
+                FileSystem.AssertNoReparsePoints(target);
+                FileSystem.DeletePath(target);
+                if (File.Exists(target) || System.IO.Directory.Exists(target))
+                {
+                    throw new IOException("Could not remove project-owned path: " + relativePath);
+                }
+                log("Removed project-owned path: " + relativePath);
+            }
+
+            string modDirectory = FileSystem.CombineInside(gameRoot, OwnedModRelativePath);
+            string marker = FileSystem.CombineInside(gameRoot, OwnershipMarkerRelativePath);
+            if (Directory.Exists(modDirectory) || File.Exists(marker))
+            {
+                throw new IOException("Mod-only removal did not remove every project-owned path.");
+            }
         }
 
         private static bool BackupIsClean(string backupDirectory, BackupManifest manifest)

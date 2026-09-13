@@ -110,7 +110,7 @@
 	"faq_guests_q": "我的朋友也需要安装 Mod 吗？",
 	"faq_guests_a": "当前仅主机安装的实验不需要。客机应保持原版并使用相同的游戏版本。请明确告知他们，目前超过4人的兼容性仍未完成验证。",
 	"faq_remove_q": "如何卸载 Mod 或恢复之前的配置？",
-	"faq_remove_a": "关闭游戏，然后运行解压后的发行包中的 FFWFrostburn8-Uninstall.exe。工具会先创建独立的安全备份，再验证并恢复最新的干净安装前备份。如果原始备份缺失或损坏，工具会停止且不会修改游戏文件。",
+	"faq_remove_a": "关闭游戏，然后运行解压后的发行包中的 FFWFrostburn8-Uninstall.exe。默认模式会先创建并验证安全备份，即使没有干净备份也只移除 FFWFrostburn8，并保留 UE4SS 和其他模组。可选的 Advanced 模式会恢复完整的干净快照；若快照缺失或损坏则拒绝写入，并可能还原之后的 UE4SS 更改。",
 	"footer_notice": "独立社区项目 · Mod 源代码采用 MIT 许可证",
 	"footer_disclaimer": "本项目与 Evil Raptor、Fireshine Games 或 Valve 无关联。Far Far West 名称及游戏资源归各自权利所有者所有。",
 	"footer_github": "GitHub 仓库",

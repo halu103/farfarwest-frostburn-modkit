@@ -17,7 +17,7 @@ contain cooked game assets.
 
 Extract that ZIP and run `FFWFrostburn8-Setup.exe`, which is immediately at the
 archive root. The same folder contains `FFWFrostburn8-Uninstall.exe` for safe,
-backup-based removal. No source browsing or PowerShell is required. The
+mod-only removal with an optional advanced snapshot restore. No source browsing or PowerShell is required. The
 download also contains a short Vietnamese/English guide and SHA-256 checksums.
 
 ## Support development
@@ -289,17 +289,20 @@ host-only support until that matrix succeeds.
 ## Uninstall with the EXE (recommended)
 
 Close Far Far West, run `FFWFrostburn8-Uninstall.exe` from the extracted player
-bundle, verify the detected game folder, and click **Uninstall / Gỡ**. It finds
-the newest valid backup whose saved state does not contain FFWFrostburn8,
-verifies every recorded hash, creates a separate pre-uninstall safety backup,
-and restores that clean state. If restoration fails, it attempts to put the
-complete pre-uninstall state back automatically.
+bundle, verify the detected game folder, leave the **Advanced** checkbox clear,
+and click **Uninstall / Gỡ**. The recommended mode creates a verified safety
+backup and removes only `Mods\FFWFrostburn8` plus this project's ownership
+marker. It preserves UE4SS, its configuration, and every unrelated mod. This
+also works when an older or manual installation left no clean pre-install
+backup.
 
 The uninstaller deliberately refuses to modify files when the game is running,
-the selected folder is not an active installation owned by this project, or no
-clean verified backup is available. It may restore UE4SS or legacy mod files
-that existed before FFWFrostburn8 was first installed. It never launches,
-closes, or restarts the game.
+or the selected folder is not an active installation owned by this project.
+The optional **Advanced** mode restores the newest fully verified clean
+pre-install snapshot. It refuses to run if that snapshot is missing or damaged,
+and it can revert UE4SS changes or unrelated mods added after the snapshot.
+Both modes automatically roll back from the safety backup on failure. The tool
+never launches, closes, or restarts the game.
 
 ## Restore a backup manually
 
