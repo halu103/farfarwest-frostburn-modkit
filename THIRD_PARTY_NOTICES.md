@@ -3,7 +3,8 @@
 ## RE-UE4SS
 
 The build tooling downloads pinned release assets from
-[UE4SS-RE/RE-UE4SS](https://github.com/UE4SS-RE/RE-UE4SS). The tracked Far Far
+[UE4SS-RE/RE-UE4SS](https://github.com/UE4SS
+-RE/RE-UE4SS). The tracked Far Far
 West compatibility configuration also originates from that project. RE-UE4SS
 is used under its MIT license.
 

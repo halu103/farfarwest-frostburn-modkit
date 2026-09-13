@@ -1,7 +1,9 @@
-import { PRIVATE_GITHUB_API_URL, PRIVATE_GITHUB_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
+import type { Release } from '#lib/components/guide/types.js';
 import type { PageServerLoad } from './$types';
 
-const RELEASES_API = `${PRIVATE_GITHUB_API_URL}?per_page=20`;
+const REPOSITORY_API = 'https://api.github.com/repos/halu103/farfarwest-frostburn-modkit';
+const RELEASES_API = `${env.PRIVATE_GITHUB_API_URL || `${REPOSITORY_API}/releases`}?per_page=20`;
 
 type GithubAsset = {
 	name: string;
@@ -20,20 +22,23 @@ type GithubRelease = {
 	assets: GithubAsset[];
 };
 
-type Release = {
-	tag: string;
-	name: string;
-	publishedAt: string;
-	pageUrl: string;
-	prerelease: boolean;
-	compatibility: string | null;
-	zipUrl: string | null;
-	zipSize: number | null;
-	installerUrl: string | null;
-	installerSize: number | null;
-	checksumUrl: string | null;
-	downloadCount: number | null;
+type GithubRepository = {
+	stargazers_count: number;
 };
+
+function githubHeaders() {
+	const headers: Record<string, string> = {
+		Accept: 'application/vnd.github+json',
+		'User-Agent': 'FFWFrostburn8-install-guide',
+		'X-GitHub-Api-Version': '2022-11-28'
+	};
+
+	if (env.PRIVATE_GITHUB_TOKEN) {
+		headers.Authorization = `Bearer ${env.PRIVATE_GITHUB_TOKEN}`;
+	}
+
+	return headers;
+}
 
 function findAsset(assets: GithubAsset[], name: string) {
 	return assets.find((asset) => asset.name === name) ?? null;
@@ -73,14 +78,18 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 		'cache-control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400'
 	});
 
+	const starCountPromise = fetch(REPOSITORY_API, { headers: githubHeaders() })
+		.then(async (response) => {
+			if (!response.ok) return null;
+
+			const repository = (await response.json()) as GithubRepository;
+			return Number.isFinite(repository.stargazers_count) ? repository.stargazers_count : null;
+		})
+		.catch(() => null);
+
 	try {
 		const response = await fetch(RELEASES_API, {
-			headers: {
-				Accept: 'application/vnd.github+json',
-				'User-Agent': 'FFWFrostburn8-install-guide',
-				'X-GitHub-Api-Version': '2022-11-28',
-				Authorization: `Bearer ${PRIVATE_GITHUB_TOKEN}`
-			}
+			headers: githubHeaders()
 		});
 
 		if (!response.ok) {
@@ -88,8 +97,6 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 		}
 
 		const githubReleases = (await response.json()) as GithubRelease[];
-
-		console.log('GitHub API response:', JSON.stringify(githubReleases, null, 2));
 
 		const releases = githubReleases
 			.filter((release) => !release.draft)
@@ -103,14 +110,16 @@ export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
 
 		return {
 			releases,
-			releasesLive: true
+			releasesLive: true,
+			starCount: await starCountPromise
 		};
 	} catch (error) {
 		console.error('Failed to fetch GitHub releases:', error);
 
 		return {
 			releases: [],
-			releasesLive: false
+			releasesLive: false,
+			starCount: await starCountPromise
 		};
 	}
 };
