@@ -110,7 +110,7 @@
 	"faq_guests_q": "Do my friends need the mod too?",
 	"faq_guests_a": "Not for the current host-only experiment. Keep guests vanilla and on the same game version. Be direct with them that compatibility beyond four players remains unverified.",
 	"faq_remove_q": "How do I remove it or recover an earlier setup?",
-	"faq_remove_a": "Close the game and use the backup created by Setup. Backups are stored under %LOCALAPPDATA%\\FFWFrostburn8\\Backups. Do not delete the entire game folder; restore the matching backup or verify game files through Steam if needed.",
+	"faq_remove_a": "Close the game and run FFWFrostburn8-Uninstall.exe from the extracted release. It verifies and restores the newest clean pre-install backup, creating a separate safety backup first. If the original backup is missing or damaged, it stops without changing game files.",
 	"footer_notice": "Independent community project · MIT-licensed mod source",
 	"footer_disclaimer": "Not affiliated with Evil Raptor, Fireshine Games, or Valve. Far Far West names and game assets belong to their respective owners.",
 	"footer_github": "GitHub repository",

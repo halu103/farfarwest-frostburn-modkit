@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "FFWFrostburn8",
   "name": "Far Far West Frostburn 8 Players - Host-Only Experimental",
-  "version": "1.1.4",
+  "version": "1.2.2",
   "license": "MIT",
   "maxPlayers": 8,
   "sessionRows": 8,

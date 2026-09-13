@@ -2,7 +2,7 @@
 
 An independent, source-owned UE4SS mod and maintenance kit for raising Far Far
 West's multiplayer capacity to eight players after the Frostburn/Unreal Engine
-5.8 update. Version 1.1.4 is an experimental build intended to test whether
+5.8 update. Version 1.2.2 is an experimental build intended to test whether
 only the host can install the mod while guests remain completely vanilla.
 
 The repository contains the complete Lua source for `FFWFrostburn8`. It does
@@ -16,8 +16,9 @@ contain cooked game assets.
 [Download FFWFrostburn8 for Windows x64](https://github.com/halu103/farfarwest-frostburn-modkit/releases/latest/download/FFWFrostburn8-Windows-x64.zip)
 
 Extract that ZIP and run `FFWFrostburn8-Setup.exe`, which is immediately at the
-archive root. No source browsing and no PowerShell are required. The download
-also contains a short Vietnamese/English guide and SHA-256 checksum.
+archive root. The same folder contains `FFWFrostburn8-Uninstall.exe` for safe,
+backup-based removal. No source browsing or PowerShell is required. The
+download also contains a short Vietnamese/English guide and SHA-256 checksums.
 
 ## Support development
 
@@ -40,7 +41,7 @@ Current baseline:
 - Far Far West: `0.2.0.20 - CL 915`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- Owned mod: `FFWFrostburn8 v1.1.4` (MIT, host-only experimental)
+- Owned mod: `FFWFrostburn8 v1.2.2` (MIT, host-only experimental)
 - Target capacity: `8`
 - Session UI: `1 host + 7 invite slots` when hosting alone
 - Package mode: source-owned Lua only
@@ -53,7 +54,7 @@ double-click the release file ending in `Setup.exe`, verify the automatically
 detected game folder, and click **Install / Cài**. The full package is embedded
 in the EXE, so it does not download another multiplayer mod.
 
-For the v1.1.4 host-only experiment, install this build on the **host only**.
+For the v1.2.2 host-only experiment, install this build on the **host only**.
 Guests must use the same game version but must not install UE4SS or this mod;
 otherwise the test cannot prove vanilla-client compatibility. This is a
 prerelease claim, not a guarantee that missions remain synchronized at 5–8
@@ -169,7 +170,7 @@ invite rows. With five players, exactly three Invite rows is correct because
 widgets, so no copied or stale cooked UI asset is required.
 
 When creating a network room, tick **Allow mods** before choosing the room
-type. Version 1.1.4 captures that choice when the host creates the room and
+type. Version 1.2.2 captures that choice when the host creates the room and
 keeps it through the widget-construction race; the red "configured to allow
 mods" message remains a secondary confirmation. This prevents a temporary
 hidden text widget from incorrectly restoring the vanilla `1 + 3` layout. The
@@ -285,7 +286,22 @@ fifth via both session code and Steam Invite, then clients 6–8, map travel,
 one mission objective, reconnect, and a manual kick. Do not advertise
 host-only support until that matrix succeeds.
 
-## Restore a backup
+## Uninstall with the EXE (recommended)
+
+Close Far Far West, run `FFWFrostburn8-Uninstall.exe` from the extracted player
+bundle, verify the detected game folder, and click **Uninstall / Gỡ**. It finds
+the newest valid backup whose saved state does not contain FFWFrostburn8,
+verifies every recorded hash, creates a separate pre-uninstall safety backup,
+and restores that clean state. If restoration fails, it attempts to put the
+complete pre-uninstall state back automatically.
+
+The uninstaller deliberately refuses to modify files when the game is running,
+the selected folder is not an active installation owned by this project, or no
+clean verified backup is available. It may restore UE4SS or legacy mod files
+that existed before FFWFrostburn8 was first installed. It never launches,
+closes, or restarts the game.
+
+## Restore a backup manually
 
 Close the game and use the backup path printed by the installer. Use only the
 command matching your edition.
@@ -313,9 +329,10 @@ src/                         Owned mod metadata and complete Lua source
 config/upstream.lock.json    Pinned game and official UE4SS versions/hashes
 config/ue4ss/                Tracked Far Far West UE4SS compatibility config
 config/static-signatures/    Read-only compatibility sentinels
-installer/                   Native WinForms one-click installer source
+installer/                   Native WinForms Setup and Uninstall source
 Install-Mod.ps1              One-command build, backup, and installer
 tools/Build-InstallerExe.ps1 Build the offline Setup.exe
+tools/Build-UninstallerExe.ps1 Build the restore-based Uninstall.exe
 tools/Build-DownloadBundle.ps1 Build the flat player-download ZIP
 tools/                       Remaining build, validation, runtime, and restore tooling
 docs/INSTALLER.md            One-click installation, safety, and distribution notes

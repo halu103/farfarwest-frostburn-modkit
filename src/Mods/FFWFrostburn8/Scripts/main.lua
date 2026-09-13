@@ -4,7 +4,7 @@
 -- or code from another multiplayer mod.
 
 local MOD_ID = "FFWFrostburn8"
-local MOD_VERSION = "1.1.4"
+local MOD_VERSION = "1.2.2"
 local TARGET_MAX_PLAYERS = 8
 local VANILLA_MAX_PLAYERS = 4
 local TARGET_SESSION_ROWS = TARGET_MAX_PLAYERS

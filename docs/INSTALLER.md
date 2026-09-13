@@ -1,4 +1,4 @@
-# One-click Windows installer
+# One-click Windows installer and uninstaller
 
 The generated `Setup.exe` is the recommended installation path for players.
 It is a native Windows GUI application: it does not invoke PowerShell and does
@@ -6,9 +6,10 @@ not download another multiplayer mod. The complete verified release ZIP is
 embedded in the executable.
 
 For players, publish `FFWFrostburn8-Windows-x64.zip` as a GitHub Release asset.
-That download has a flat layout, so `FFWFrostburn8-Setup.exe` is visible
-immediately after extraction. Do not direct players to GitHub's automatically
-generated source archive. See [publishing](PUBLISHING.md).
+That download has a flat layout, so `FFWFrostburn8-Setup.exe` and
+`FFWFrostburn8-Uninstall.exe` are visible immediately after extraction. Do not
+direct players to GitHub's automatically generated source archive. See
+[publishing](PUBLISHING.md).
 
 ## Install without PowerShell
 
@@ -19,7 +20,7 @@ generated source archive. See [publishing](PUBLISHING.md).
 4. Click **Install / Cài** and confirm.
 5. Start the game normally, create a room, and tick **Allow mods**.
 
-Version 1.1.4 is a **host-only experimental** build. Install it on the host
+Version 1.2.2 is a **host-only experimental** build. Install it on the host
 only; test guests must use the same game version with no UE4SS/mod installation.
 It captures the room's **Allow mods** choice during room creation so a temporary
 widget-visibility race cannot collapse the interface to the vanilla three
@@ -48,6 +49,26 @@ Backups and logs are stored outside the game:
 If a write or verification fails, the installer attempts an automatic
 rollback before reporting the error. Keep the backup directory shown in the
 success dialog if you may want to return to the previous UE4SS setup later.
+
+## Uninstall without PowerShell
+
+1. Close Far Far West.
+2. Run `FFWFrostburn8-Uninstall.exe` from the extracted release bundle.
+3. Verify the detected game folder.
+4. Click **Uninstall / Gỡ** and confirm.
+
+The uninstaller does not blindly delete `dwmapi.dll` or the complete `ue4ss`
+directory. It first verifies that the active installation belongs to this
+project, selects the newest valid backup whose saved state does not contain
+FFWFrostburn8, validates its recorded hashes, and creates an additional safety
+backup of the current state. It then restores the pre-install files. A failure
+triggers an automatic restore from the safety backup.
+
+If the original backup is missing or damaged, the operation stops without
+changing game files. The restored state may include UE4SS or legacy mod files
+that existed before FFWFrostburn8 was installed. Uninstallation intentionally
+does not require the game executable to remain on the old supported version,
+so the mod can still be removed after a game update.
 
 ## Windows security notice
 
@@ -124,6 +145,19 @@ pwsh.exe -NoLogo -NoProfile -File .\tools\Test-InstallerExe.ps1 `
 The PowerShell 7 command automatically delegates only the .NET Framework
 reflection harness to built-in Windows PowerShell 5.1. The generated installer
 itself remains native and does not invoke PowerShell.
+
+Build and test the standalone uninstaller with the matching edition:
+
+```powershell
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-UninstallerExe.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-UninstallerExe.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+```
+
+PowerShell 7+ uses `pwsh.exe` with the same script paths. The tests install and
+uninstall only inside `work/uninstaller-e2e`; they also corrupt a backup and
+inject a restore failure to prove refusal-before-write and complete rollback.
 
 Use `$PSVersionTable.PSEdition` and `$PSVersionTable.PSVersion` to choose the
 correct maintainer command. See [PowerShell compatibility](POWERSHELL.md) for

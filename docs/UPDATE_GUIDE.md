@@ -173,7 +173,7 @@ The installer takes a dated backup and refuses to write if the game is running.
 Launch the game normally, create a room with **Allow mods** enabled, open
 **Current Session**, then run the matching verification command.
 
-For the v1.1.4 host-only experiment, install the mod only on the host. Every
+For the v1.2.2 host-only experiment, install the mod only on the host. Every
 guest must use the same game build with no `dwmapi.dll`/UE4SS mod installation.
 First verify the solo `1 member + 7 Invite` tuple with
 `-RequireSoloInviteUi`. Then have a fifth real player join and use
@@ -205,7 +205,7 @@ Core startup can be automated, but multiplayer capacity cannot be honestly
 proven with one client. Use this live matrix before removing the experimental
 label:
 
-1. Host only has v1.1.4; all guests are verified vanilla.
+1. Host only has v1.2.2; all guests are verified vanilla.
 2. Clients 2–4 join normally.
 3. Client 5 joins once by session code and once by Steam Invite.
 4. Clients 6–8 join and all eight names appear.

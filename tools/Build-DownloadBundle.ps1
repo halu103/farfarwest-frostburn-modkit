@@ -4,6 +4,8 @@ param(
 
     [string]$InstallerPath,
 
+    [string]$UninstallerPath,
+
     [string]$OutputDirectory
 )
 
@@ -34,20 +36,20 @@ function Assert-X64PortableExecutable {
     $reader = [IO.BinaryReader]::new($stream)
     try {
         if ($stream.Length -lt 256 -or $reader.ReadUInt16() -ne 0x5A4D) {
-            throw "Installer is not a valid Windows PE file: $Path"
+            throw "Executable is not a valid Windows PE file: $Path"
         }
         $stream.Position = 0x3C
         $peOffset = $reader.ReadInt32()
         if ($peOffset -lt 0x40 -or $peOffset -gt $stream.Length - 6) {
-            throw "Installer has an invalid PE header offset: $Path"
+            throw "Executable has an invalid PE header offset: $Path"
         }
         $stream.Position = $peOffset
         if ($reader.ReadUInt32() -ne 0x00004550) {
-            throw "Installer PE signature is invalid: $Path"
+            throw "Executable PE signature is invalid: $Path"
         }
         $machine = $reader.ReadUInt16()
         if ($machine -ne 0x8664) {
-            throw ("Installer must be x64 (PE machine 0x8664); found 0x{0:X4}." -f $machine)
+            throw ("Executable must be x64 (PE machine 0x8664); found 0x{0:X4}." -f $machine)
         }
     } finally {
         $reader.Dispose()
@@ -77,12 +79,33 @@ if (-not (Test-Path -LiteralPath $sourceInstaller -PathType Leaf)) {
     throw "Installer executable was not found: $sourceInstaller"
 }
 
+if (-not $UninstallerPath) {
+    $expectedUninstallerPattern = "*-FFWFrostburn8-v$($mod.version)-Uninstall.exe"
+    $uninstallers = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot "dist") -File -Filter $expectedUninstallerPattern |
+        Where-Object { $_.Directory.Name -ne "release-v$($mod.version)" } |
+        Sort-Object -Property LastWriteTime -Descending)
+    if ($uninstallers.Count -eq 0) {
+        throw "No matching Uninstall.exe was found under dist/. Build it first with tools\Build-UninstallerExe.ps1."
+    }
+    $UninstallerPath = $uninstallers[0].FullName
+}
+$sourceUninstaller = [IO.Path]::GetFullPath($UninstallerPath)
+if (-not (Test-Path -LiteralPath $sourceUninstaller -PathType Leaf)) {
+    throw "Uninstaller executable was not found: $sourceUninstaller"
+}
+
 Assert-X64PortableExecutable -Path $sourceInstaller
-$versionInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($sourceInstaller)
+Assert-X64PortableExecutable -Path $sourceUninstaller
+$installerVersionInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($sourceInstaller)
+$uninstallerVersionInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($sourceUninstaller)
 $expectedFileVersion = "$($mod.version).0"
-if ($versionInfo.FileVersion -ne $expectedFileVersion -or
-    $versionInfo.ProductVersion -ne $expectedFileVersion) {
-    throw "Installer version mismatch. Expected $expectedFileVersion, found FileVersion=$($versionInfo.FileVersion), ProductVersion=$($versionInfo.ProductVersion)."
+if ($installerVersionInfo.FileVersion -ne $expectedFileVersion -or
+    $installerVersionInfo.ProductVersion -ne $expectedFileVersion) {
+    throw "Installer version mismatch. Expected $expectedFileVersion, found FileVersion=$($installerVersionInfo.FileVersion), ProductVersion=$($installerVersionInfo.ProductVersion)."
+}
+if ($uninstallerVersionInfo.FileVersion -ne $expectedFileVersion -or
+    $uninstallerVersionInfo.ProductVersion -ne $expectedFileVersion) {
+    throw "Uninstaller version mismatch. Expected $expectedFileVersion, found FileVersion=$($uninstallerVersionInfo.FileVersion), ProductVersion=$($uninstallerVersionInfo.ProductVersion)."
 }
 
 $workRoot = Reset-SafeDirectory `
@@ -107,6 +130,25 @@ if ($verifyProcess.ExitCode -ne 0 -or
     (Get-Content -LiteralPath $verificationLog -Raw) -notmatch "Verification completed successfully") {
     throw "The installer failed read-only verification and will not be packaged."
 }
+$uninstallerVerificationLog = Join-Path $workRoot "uninstaller-verification.log"
+$uninstallerVerifyArguments = @(
+    "--verify-only",
+    "--game-root",
+    (Protect-NativeArgument -Value $resolvedGameRoot),
+    "--log",
+    (Protect-NativeArgument -Value $uninstallerVerificationLog)
+)
+$uninstallerVerifyProcess = Start-Process `
+    -FilePath $sourceUninstaller `
+    -ArgumentList $uninstallerVerifyArguments `
+    -WindowStyle Hidden `
+    -Wait `
+    -PassThru
+if ($uninstallerVerifyProcess.ExitCode -ne 0 -or
+    -not (Test-Path -LiteralPath $uninstallerVerificationLog -PathType Leaf) -or
+    (Get-Content -LiteralPath $uninstallerVerificationLog -Raw) -notmatch "Uninstaller verification completed successfully") {
+    throw "The uninstaller failed read-only verification and will not be packaged."
+}
 
 if (-not $OutputDirectory) {
     $outputRoot = Reset-SafeDirectory `
@@ -118,22 +160,36 @@ if (-not $OutputDirectory) {
 }
 
 $friendlyInstallerName = "FFWFrostburn8-Setup.exe"
+$friendlyUninstallerName = "FFWFrostburn8-Uninstall.exe"
 $directInstaller = Join-Path $outputRoot $friendlyInstallerName
+$directUninstaller = Join-Path $outputRoot $friendlyUninstallerName
 Copy-Item -LiteralPath $sourceInstaller -Destination $directInstaller -Force
+Copy-Item -LiteralPath $sourceUninstaller -Destination $directUninstaller -Force
 $installerSha256 = Get-Sha256 -Path $directInstaller
+$uninstallerSha256 = Get-Sha256 -Path $directUninstaller
 if ($installerSha256 -ne (Get-Sha256 -Path $sourceInstaller)) {
     throw "The friendly release copy does not match the verified installer."
 }
+if ($uninstallerSha256 -ne (Get-Sha256 -Path $sourceUninstaller)) {
+    throw "The friendly release copy does not match the verified uninstaller."
+}
 $directChecksum = $directInstaller + ".sha256.txt"
+$directUninstallerChecksum = $directUninstaller + ".sha256.txt"
 [IO.File]::WriteAllText(
     $directChecksum,
     $installerSha256 + " *" + $friendlyInstallerName + [Environment]::NewLine,
+    [Text.Encoding]::ASCII
+)
+[IO.File]::WriteAllText(
+    $directUninstallerChecksum,
+    $uninstallerSha256 + " *" + $friendlyUninstallerName + [Environment]::NewLine,
     [Text.Encoding]::ASCII
 )
 
 $stageRoot = Join-Path $workRoot "bundle-root"
 New-Item -ItemType Directory -Path $stageRoot -Force | Out-Null
 Copy-Item -LiteralPath $directInstaller -Destination (Join-Path $stageRoot $friendlyInstallerName)
+Copy-Item -LiteralPath $directUninstaller -Destination (Join-Path $stageRoot $friendlyUninstallerName)
 Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination (Join-Path $stageRoot "LICENSE.txt")
 Copy-Item `
     -LiteralPath (Join-Path $projectRoot "THIRD_PARTY_NOTICES.md") `
@@ -161,6 +217,15 @@ CAI DAT / INSTALL
    Alone: verify 7 Invite buttons. With 5 players: verify all 5 names and 3
    Invite buttons. Without "Allow mods", the UI must keep its normal 4 rows.
 
+GO CAI DAT / UNINSTALL
+1. Dong Far Far West hoan toan. / Close Far Far West completely.
+2. Chay $friendlyUninstallerName va kiem tra dung thu muc game.
+   Run $friendlyUninstallerName and verify the selected game folder.
+3. Bam "Uninstall / Go". Chuong trinh chi khoi phuc backup sach da xac minh.
+   Click "Uninstall / Go". The tool restores only a verified clean backup.
+4. Neu backup bi thieu hoac sai hash, chuong trinh se dung ma khong xoa thu cong.
+   If the backup is missing or damaged, it stops without deleting files manually.
+
 Khong can PowerShell. Bo cai khong tai them mod cua nguoi khac va khong tu mo,
 dong hay khoi dong lai game. Neu game dang chay, bo cai se tu choi ghi file.
 No PowerShell is required. The installer downloads no other multiplayer mod and
@@ -171,6 +236,7 @@ LUU Y / IMPORTANT
 - Bo cai thay the dwmapi.dll va toan bo thu muc ue4ss hien tai.
 - Existing UE4SS files are backed up but are not kept active automatically.
 - Backup: %LOCALAPPDATA%\FFWFrostburn8\Backups
+- Uninstall safety: %LOCALAPPDATA%\FFWFrostburn8\UninstallSafety
 - Log:    %LOCALAPPDATA%\FFWFrostburn8\Logs
 - Build nay chua co chu ky so; hay doi chieu SHA256SUMS.txt neu Windows hien
   canh bao unknown publisher. Khong tat Windows Defender.
@@ -180,8 +246,8 @@ LUU Y / IMPORTANT
 - Day la ban thu nghiem. Khong coi 7 nut Invite la bang chung client vanilla vao duoc.
   This is experimental. Seven Invite buttons do not prove vanilla clients can join.
 
-SHA-256 cua file cai dat nam trong SHA256SUMS.txt.
-The installer SHA-256 is recorded in SHA256SUMS.txt.
+SHA-256 cua ca Setup va Uninstall nam trong SHA256SUMS.txt.
+SHA-256 values for both Setup and Uninstall are recorded in SHA256SUMS.txt.
 "@
 [IO.File]::WriteAllText(
     (Join-Path $stageRoot "README-VI.txt"),
@@ -190,7 +256,8 @@ The installer SHA-256 is recorded in SHA256SUMS.txt.
 )
 [IO.File]::WriteAllText(
     (Join-Path $stageRoot "SHA256SUMS.txt"),
-    $installerSha256 + " *" + $friendlyInstallerName + [Environment]::NewLine,
+    $installerSha256 + " *" + $friendlyInstallerName + [Environment]::NewLine +
+    $uninstallerSha256 + " *" + $friendlyUninstallerName + [Environment]::NewLine,
     [Text.Encoding]::ASCII
 )
 
@@ -243,6 +310,9 @@ $bundleChecksum = $bundlePath + ".sha256.txt"
     directInstaller = [IO.Path]::GetFullPath($directInstaller)
     directInstallerSha256 = $installerSha256
     directInstallerChecksum = [IO.Path]::GetFullPath($directChecksum)
+    directUninstaller = [IO.Path]::GetFullPath($directUninstaller)
+    directUninstallerSha256 = $uninstallerSha256
+    directUninstallerChecksum = [IO.Path]::GetFullPath($directUninstallerChecksum)
     downloadBundle = [IO.Path]::GetFullPath($bundlePath)
     downloadBundleSha256 = $bundleSha256
     downloadBundleChecksum = [IO.Path]::GetFullPath($bundleChecksum)
@@ -250,7 +320,10 @@ $bundleChecksum = $bundlePath + ".sha256.txt"
     flatRootLayoutVerified = $true
     roundTripHashesVerified = $true
     installerReadOnlyVerificationPassed = $true
+    uninstallerReadOnlyVerificationPassed = $true
     gameWasLaunched = $false
     gameFilesWereChanged = $false
+    installerAuthenticodeStatus = [string](Get-AuthenticodeSignature -LiteralPath $directInstaller).Status
+    uninstallerAuthenticodeStatus = [string](Get-AuthenticodeSignature -LiteralPath $directUninstaller).Status
     authenticodeStatus = [string](Get-AuthenticodeSignature -LiteralPath $directInstaller).Status
 }

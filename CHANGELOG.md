@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.2 - 2026-09-13
+
+- Add a standalone native x64 `FFWFrostburn8-Uninstall.exe` so players no
+  longer need PowerShell or manual folder deletion to remove the mod.
+- Restore the newest verified backup from before FFWFrostburn8 was installed,
+  including any UE4SS state that existed at that point.
+- Refuse to change files when the game is running, the active installation is
+  not owned by this project, or the original backup is missing or damaged.
+- Create and verify a separate pre-uninstall safety backup; automatically roll
+  back to it if any restore operation fails.
+- Add sandbox tests covering complete restoration, repeat-run refusal,
+  corrupted-backup refusal, injected-failure rollback, and game EXE integrity.
+- Include Setup and Uninstall executables together at the release ZIP root with
+  SHA-256 entries for both files.
+
 ## 1.1.4 - 2026-09-12
 
 - Add an explicitly labelled host-only experimental mode for testing vanilla

@@ -110,7 +110,7 @@
 	"faq_guests_q": "Bạn bè của tôi có cần cài mod không?",
 	"faq_guests_a": "Không cần đối với thử nghiệm chỉ-host hiện tại. Giữ máy khách nguyên bản và sử dụng cùng phiên bản game. Hãy nói rõ với họ rằng khả năng tương thích vượt quá 4 người vẫn chưa được xác minh.",
 	"faq_remove_q": "Làm thế nào để gỡ mod hoặc khôi phục thiết lập cũ?",
-	"faq_remove_a": "Đóng game và sử dụng bản sao lưu do Setup tạo. Các bản sao lưu được lưu tại %LOCALAPPDATA%\\FFWFrostburn8\\Backups. Không xóa toàn bộ thư mục game; hãy khôi phục đúng bản backup hoặc Verify game files bằng Steam nếu cần.",
+	"faq_remove_a": "Đóng game và chạy FFWFrostburn8-Uninstall.exe trong bản release đã giải nén. Công cụ xác minh rồi khôi phục bản backup sạch mới nhất, đồng thời tạo một backup cứu hộ trước khi thay đổi file. Nếu backup gốc bị thiếu hoặc hỏng, công cụ sẽ dừng mà không thay đổi file game.",
 	"footer_notice": "Dự án cộng đồng độc lập · Mã nguồn mod sử dụng giấy phép MIT",
 	"footer_disclaimer": "Không liên kết với Evil Raptor, Fireshine Games hoặc Valve. Tên Far Far West và tài sản trong game thuộc về các chủ sở hữu tương ứng.",
 	"footer_github": "Kho GitHub",

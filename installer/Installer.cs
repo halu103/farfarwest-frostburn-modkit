@@ -813,7 +813,7 @@ namespace FFWFrostburn8Installer
             {
                 throw new InvalidOperationException("Far Far West is running (PID " +
                     String.Join(", ", ids.Distinct().OrderBy(value => value)) +
-                    "). Close the game before installing. The installer will not close it for you.");
+                    "). Close the game before changing mod files. The tool will not close it for you.");
             }
         }
 

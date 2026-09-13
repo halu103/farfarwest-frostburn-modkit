@@ -48,8 +48,10 @@ $requiredFiles = @(
     "src\Mods\FFWFrostburn8\Scripts\main.lua",
     "docs\UPDATE_GUIDE.md",
     "installer\Installer.cs",
+    "installer\Uninstaller.cs",
     "installer\app.manifest",
     "tools\Build-InstallerExe.ps1",
+    "tools\Build-UninstallerExe.ps1",
     "tools\Build-DownloadBundle.ps1",
     "tools\Build-Release.ps1",
     "tools\Install-Release.ps1",
@@ -57,6 +59,7 @@ $requiredFiles = @(
     "tools\Restore-Backup.ps1",
     "tools\Test-Compatibility.ps1",
     "tools\Test-InstallerExe.ps1",
+    "tools\Test-UninstallerExe.ps1",
     "tools\Test-Project.ps1",
     "tools\Test-RuntimeLog.ps1",
     "tools\lib\Common.ps1",
@@ -108,7 +111,7 @@ Assert-ProjectCheck -Condition ([int]$mod.soloInviteSlots -eq 7) -Message "Solo 
 Assert-ProjectCheck -Condition ([bool]$mod.requiresAllowMods) -Message "Expanded Session UI must require the game's Allow mods setting."
 Assert-ProjectCheck -Condition ([bool]$mod.uiSynchronizesPlayerRows) -Message "Session UI must synchronize real player rows before invite rows."
 Assert-ProjectCheck -Condition ($mod.deploymentMode -eq "host-only-experimental") `
-    -Message "Version 1.1.4 must be labelled as host-only experimental."
+    -Message "The current version must be labelled as host-only experimental."
 Assert-ProjectCheck -Condition ($mod.vanillaClientCompatibility -eq "unverified") `
     -Message "Vanilla-client compatibility must remain unverified until a live multiplayer test passes."
 Assert-ProjectCheck -Condition ($mod.license -eq "MIT") -Message "Owned mod source must remain MIT licensed."
@@ -262,8 +265,10 @@ Assert-ProjectCheck -Condition ($buildScript -notmatch '(?i)MorePlayersArchive|N
     -Message "Build-Release.ps1 still depends on a downloaded third-party mod archive."
 
 $installerSourcePath = Join-Path $projectRoot "installer\Installer.cs"
+$uninstallerSourcePath = Join-Path $projectRoot "installer\Uninstaller.cs"
 $installerManifestPath = Join-Path $projectRoot "installer\app.manifest"
 $installerBuildPath = Join-Path $projectRoot "tools\Build-InstallerExe.ps1"
+$uninstallerBuildPath = Join-Path $projectRoot "tools\Build-UninstallerExe.ps1"
 $downloadBundlePath = Join-Path $projectRoot "tools\Build-DownloadBundle.ps1"
 if ((Test-Path -LiteralPath $installerSourcePath -PathType Leaf) -and
     (Test-Path -LiteralPath $installerManifestPath -PathType Leaf) -and
@@ -293,6 +298,31 @@ if ((Test-Path -LiteralPath $installerSourcePath -PathType Leaf) -and
         $installerBuild -match '/target:winexe') `
         -Message "Build-InstallerExe.ps1 is not embedding the offline release in a Windows GUI executable."
 }
+if ((Test-Path -LiteralPath $uninstallerSourcePath -PathType Leaf) -and
+    (Test-Path -LiteralPath $uninstallerBuildPath -PathType Leaf)) {
+    $uninstallerSource = Get-Content -LiteralPath $uninstallerSourcePath -Raw
+    $uninstallerBuild = Get-Content -LiteralPath $uninstallerBuildPath -Raw
+    Assert-ProjectCheck -Condition ($uninstallerSource -match 'AssertOwnedInstallation' -and
+        $uninstallerSource -match 'FARFARWEST_MODKIT_MANIFEST\.json') `
+        -Message "The native uninstaller is missing ownership validation."
+    Assert-ProjectCheck -Condition ($uninstallerSource -match 'FindCleanBackup' -and
+        $uninstallerSource -match 'ValidateBackupCandidate' -and
+        $uninstallerSource -match 'Hashing\.AssertInventory') `
+        -Message "The native uninstaller is missing clean-backup selection or integrity verification."
+    Assert-ProjectCheck -Condition ($uninstallerSource -match 'UninstallSafety' -and
+        $uninstallerSource -match 'rolled-back-after-uninstall-error') `
+        -Message "The native uninstaller is missing its safety backup or automatic rollback."
+    Assert-ProjectCheck -Condition ($uninstallerSource -match 'FFWFrostburn8-Installer-v1' -and
+        $uninstallerSource -match 'EnsureGameNotRunning' -and
+        $uninstallerSource -match 'AcquireGameStartGuard') `
+        -Message "The native uninstaller does not share the installer lock or guard against game startup."
+    Assert-ProjectCheck -Condition ($uninstallerSource -notmatch '(?i)powershell\.exe|pwsh\.exe') `
+        -Message "The GUI uninstaller must be native and must not wrap a PowerShell command."
+    Assert-ProjectCheck -Condition ($uninstallerBuild -match '/main:FFWFrostburn8Installer\.UninstallerProgram' -and
+        $uninstallerBuild -match '/target:winexe' -and
+        $uninstallerBuild -match '/platform:x64') `
+        -Message "Build-UninstallerExe.ps1 is not compiling the dedicated native x64 GUI entry point."
+}
 if (Test-Path -LiteralPath $downloadBundlePath -PathType Leaf) {
     $downloadBundle = Get-Content -LiteralPath $downloadBundlePath -Raw
     Assert-ProjectCheck -Condition ($downloadBundle -match 'FFWFrostburn8-Windows-x64\.zip') `
@@ -302,6 +332,7 @@ if (Test-Path -LiteralPath $downloadBundlePath -PathType Leaf) {
         -Message "The player bundle is missing flat-layout or round-trip verification."
     foreach ($bundleRootName in @(
         "FFWFrostburn8-Setup.exe",
+        "FFWFrostburn8-Uninstall.exe",
         "README-VI.txt",
         "SHA256SUMS.txt",
         "LICENSE.txt",

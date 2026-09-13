@@ -21,7 +21,11 @@ Windows PowerShell 5.1:
 ```powershell
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-InstallerExe.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-UninstallerExe.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-InstallerExe.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-UninstallerExe.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-DownloadBundle.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
@@ -32,7 +36,11 @@ PowerShell 7+:
 ```powershell
 pwsh.exe -NoLogo -NoProfile -File .\tools\Build-InstallerExe.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+pwsh.exe -NoLogo -NoProfile -File .\tools\Build-UninstallerExe.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 pwsh.exe -NoLogo -NoProfile -File .\tools\Test-InstallerExe.ps1 `
+  -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
+pwsh.exe -NoLogo -NoProfile -File .\tools\Test-UninstallerExe.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 pwsh.exe -NoLogo -NoProfile -File .\tools\Build-DownloadBundle.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
@@ -41,9 +49,11 @@ pwsh.exe -NoLogo -NoProfile -File .\tools\Build-DownloadBundle.ps1 `
 The final upload directory is:
 
 ```text
-dist\release-v1.1.4\
+dist\release-v1.2.2\
   FFWFrostburn8-Setup.exe
   FFWFrostburn8-Setup.exe.sha256.txt
+  FFWFrostburn8-Uninstall.exe
+  FFWFrostburn8-Uninstall.exe.sha256.txt
   FFWFrostburn8-Windows-x64.zip
   FFWFrostburn8-Windows-x64.zip.sha256.txt
 ```
@@ -53,27 +63,28 @@ extracts it and immediately sees:
 
 ```text
 FFWFrostburn8-Setup.exe
+FFWFrostburn8-Uninstall.exe
 README-VI.txt
 SHA256SUMS.txt
 LICENSE.txt
 THIRD-PARTY-NOTICES.txt
 ```
 
-The bundle builder uses that exact five-file allowlist, reopens the ZIP,
-verifies every file hash, checks the installer is x64/versioned correctly, and
-runs its read-only compatibility mode before packaging. It does not install or
-launch the game.
+The bundle builder uses that exact six-file allowlist, reopens the ZIP,
+verifies every file hash, checks both executables are x64/versioned correctly,
+and runs their read-only verification modes before packaging. It does not
+install, uninstall, or launch the game.
 
 ## 2. Create the GitHub Release
 
 On `https://github.com/halu103/farfarwest-frostburn-modkit`:
 
 1. Open **Releases** and choose **Draft a new release**.
-2. Create a version tag such as `v1.1.4-host-only-experimental-ffw-0.2.0.20-cl915` from the reviewed
+2. Create a version tag such as `v1.2.2-host-only-experimental-ffw-0.2.0.20-cl915` from the reviewed
    commit.
-3. Use a title such as `FFWFrostburn8 v1.1.4 Host-Only Experimental — Far Far West 0.2.0.20 CL 915`.
-4. Upload all four files from `dist\release-v1.1.4` as Release assets.
-5. Put both SHA-256 values and the supported game version in the release notes.
+3. Use a title such as `FFWFrostburn8 v1.2.2 Host-Only Experimental — Far Far West 0.2.0.20 CL 915`.
+4. Upload all six files from `dist\release-v1.2.2` as Release assets.
+5. Put the published SHA-256 values and the supported game version in the release notes.
 6. State that the build is unsigned, only the host should install it for this
    experiment, and vanilla-client compatibility is still unverified.
 7. Publish it as a **prerelease** until clean clients 5–8, map travel, an
