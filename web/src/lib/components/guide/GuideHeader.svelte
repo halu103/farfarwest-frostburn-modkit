@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import type { Pathname } from '$app/types';
 	import {
+		Coffee02Icon,
 		CowboyHatIcon,
 		Download04Icon,
 		Github01Icon,
@@ -16,15 +17,18 @@
 	import { getLocaleForUrl, localizeHref } from '#lib/paraglide/runtime.js';
 	import { REPOSITORY_URL } from '#lib';
 	import type { Release } from './types.js';
+	import { PUBLIC_BUYME_URL } from '$env/static/public';
 
 	let { latest, starCount }: { latest?: Release; starCount: number | null } = $props();
+	const supportUrl = PUBLIC_BUYME_URL || 'https://www.buymeacoffee.com/halu103';
 
 	const languages = [
 		{ code: 'en', short: 'EN', flag: '🇬🇧', name: 'English' },
 		{ code: 'vi', short: 'VI', flag: '🇻🇳', name: 'Tiếng Việt' },
 		{ code: 'zh', short: 'ZH', flag: '🇨🇳', name: '简体中文' },
 		{ code: 'jp', short: 'JP', flag: '🇯🇵', name: '日本語' },
-		{ code: 'kr', short: 'KR', flag: '🇰🇷', name: '한국어' }
+		{ code: 'kr', short: 'KR', flag: '🇰🇷', name: '한국어' },
+		{ code: 'de', short: 'DE', flag: '🇩🇪', name: 'Deutsch' }
 	] as const;
 
 	let activeLocale = $derived(getLocaleForUrl(page.url));
@@ -51,17 +55,18 @@
 
 <header class="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl">
 	<div
-		class="mx-auto flex min-h-16 max-w-[1180px] items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8"
+		class="mx-auto flex min-h-[72px] max-w-full items-center gap-3 px-4
+		sm:px-6 lg:gap-4 lg:px-16"
 	>
 		<a
 			href={resolve(localizeHref('/') as Pathname)}
-			class="group flex min-w-0 items-center gap-3"
+			class="group mr-2 flex shrink-0 items-center gap-3 lg:mr-5"
 			aria-label="FFW8"
 		>
 			<span class="brand-mark" aria-hidden="true">
 				<HugeiconsIcon icon={CowboyHatIcon} strokeWidth={2.2} class="size-5" />
 			</span>
-			<span class="hidden min-w-0 sm:block">
+			<span class="hidden w-[180px] min-w-0 sm:block xl:w-[210px]">
 				<strong
 					class="block truncate text-sm font-black tracking-[0.09em] text-foreground uppercase"
 				>
@@ -137,6 +142,20 @@
 			<span class="hidden xl:inline">Star</span>
 			<HugeiconsIcon icon={StarIcon} strokeWidth={2} class="size-3.5 text-primary" />
 			{#if formattedStarCount !== null}<span>{formattedStarCount}</span>{/if}
+		</Button>
+
+		<Button
+			href={supportUrl}
+			target="_blank"
+			rel="noreferrer"
+			variant="outline"
+			size="sm"
+			class="h-9 rounded-md border-primary/45 bg-primary/10 px-2.5 font-bold text-primary hover:border-primary hover:bg-primary hover:text-primary-foreground sm:px-3"
+			aria-label="Buy me a coffee"
+			title="Buy me a coffee"
+		>
+			<HugeiconsIcon icon={Coffee02Icon} strokeWidth={2.2} data-icon="inline-start" />
+			<span class="hidden xl:inline">Buy me a coffee</span>
 		</Button>
 	</div>
 </header>

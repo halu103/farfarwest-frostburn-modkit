@@ -214,6 +214,13 @@
 			0 14px 42px rgb(0 0 0 / 0.44);
 	}
 
+	.frontier-title.vi-frontier-title {
+		max-width: 14ch;
+		font-size: clamp(3.25rem, 7.5vw, 6.5rem);
+		line-height: 0.96;
+		letter-spacing: -0.055em;
+	}
+
 	.section-kicker {
 		@apply font-mono text-xs font-black tracking-[0.2em] text-primary uppercase;
 	}
