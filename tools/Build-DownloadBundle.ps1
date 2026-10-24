@@ -196,11 +196,21 @@ Copy-Item `
     -Destination (Join-Path $stageRoot "THIRD-PARTY-NOTICES.txt")
 
 $readmeText = @"
-FFWFrostburn8 v$($mod.version) - Far Far West 8 Players
+FFWFrostburn8 v$($mod.version) - $(if ($mod.releaseChannel -eq "compatibility-preview") { "EOS Diagnostics Preview" } elseif ($mod.releaseChannel -eq "legacy-runtime-preview") { "EOS Legacy Runtime Test" } else { "Far Far West 8 Players" })
 =======================================================
 
+$(
+    if ($mod.releaseChannel -eq "diagnostic-preview") {
+        "DIAGNOSTIC PREVIEW / BAN KIEM TRA: NOT A GAMEPLAY FIX. DO NOT PUBLISH AS A FIX.`nTNT missile activation and Joker restoration are NOT fixed or runtime-verified.`n"
+    } elseif ($mod.releaseChannel -eq "compatibility-preview") {
+        "EOS COMPATIBILITY PREVIEW / BAN THU NGHIEM EOS: DIAGNOSTICS ONLY.`nEight-player capacity, extra Invite rows and the old join guard are disabled in this preview.`nThe new game uses Epic Online Services; vanilla clients 5-8 are not verified. TNT missile and Joker issues are not fixed.`nDo not publish this as a working 8-player mod.`n"
+    } elseif ($mod.releaseChannel -eq "legacy-runtime-preview") {
+        "EOS LEGACY RUNTIME TEST / BAN THU NGHIEM: earlier capacity and Invite logic is ACTIVE.`nOne guest joining confirms only a two-player smoke test; it does not prove players 5-8 can join, or that vanilla guests work with a modded host.`nThe new game uses Epic Online Services. Old Steam room/join hooks did not register in an earlier solo run. TNT missile and Joker issues are NOT fixed.`nDo not publish this as verified eight-player support.`n"
+    }
+)
+
 Danh cho / For: Far Far West $($lock.target.productVersion), Windows x64
-Che do / Mode: HOST-ONLY EXPERIMENTAL - VANILLA CLIENTS UNVERIFIED
+Che do / Mode: $(if ($mod.releaseChannel -eq "compatibility-preview") { "DIAGNOSTICS ONLY - NO EIGHT-PLAYER CAPACITY" } else { "HOST-ONLY EXPERIMENTAL - VANILLA CLIENTS UNVERIFIED" })
 
 CAI DAT / INSTALL
 1. Dong Far Far West hoan toan. / Close Far Far West completely.
@@ -208,14 +218,13 @@ CAI DAT / INSTALL
    Run $friendlyInstallerName from this folder.
 3. Kiem tra duong dan game, bam "Install / Cai" va cho thong bao thanh cong.
    Check the game path, click "Install / Cai", and wait for success.
-4. Mo game binh thuong, tao phong va tich "Allow mods".
-   Start the game normally, create a room, and tick "Allow mods".
-5. Chi host cai ban nay; may khach de game nguyen ban, khong cai UE4SS/mod.
-   Install this build on the host only; guests must remain vanilla.
-6. Khi mot minh: kiem tra 7 nut Invite. Khi co 5 nguoi: kiem tra du 5 ten va
-   con 3 nut Invite. Neu khong tick "Allow mods", giao dien phai giu 4 dong.
-   Alone: verify 7 Invite buttons. With 5 players: verify all 5 names and 3
-   Invite buttons. Without "Allow mods", the UI must keep its normal 4 rows.
+$(
+    if ($mod.releaseChannel -eq "compatibility-preview") {
+        "4. Ban nay chi ghi log chan doan; khong mo rong phong hay Invite.`n   This preview records diagnostics only. It does not expand the room or Invite UI.`n5. Khong thu moi nguoi choi thu 5 de chung minh tinh nang 8 nguoi.`n   Do not use it as proof that a fifth vanilla player can join."
+    } else {
+        "4. Mo game binh thuong, tao phong va tich `"Allow mods`".`n   Start the game normally, create a room, and tick `"Allow mods`".`n5. Chi host cai ban nay; may khach de game nguyen ban, khong cai UE4SS/mod.`n   Install this build on the host only; guests must remain vanilla.`n6. Khi mot minh: kiem tra 7 nut Invite. Khi co 5 nguoi: kiem tra du 5 ten va`n   con 3 nut Invite. Neu khong tick `"Allow mods`", giao dien phai giu 4 dong.`n   Alone: verify 7 Invite buttons. With 5 players: verify all 5 names and 3`n   Invite buttons. Without `"Allow mods`", the UI must keep its normal 4 rows."
+    }
+)
 
 GO CAI DAT / UNINSTALL
 1. Dong Far Far West hoan toan. / Close Far Far West completely.
@@ -245,8 +254,9 @@ LUU Y / IMPORTANT
 - Build nay chua co chu ky so; hay doi chieu SHA256SUMS.txt neu Windows hien
   canh bao unknown publisher. Khong tat Windows Defender.
 - A successful install does not by itself prove eight real network clients.
-  Test a fifth vanilla player via session code and Steam Invite, then all eight,
-  map travel, an objective, reconnect, and manual kick before claiming support.
+  The game now uses EOS matchmaking. A future functional build requires a
+  controlled fifth vanilla-player join, then all eight, map travel, objective,
+  reconnect, and kick checks before claiming support.
 - Day la ban thu nghiem. Khong coi 7 nut Invite la bang chung client vanilla vao duoc.
   This is experimental. Seven Invite buttons do not prove vanilla clients can join.
 
@@ -265,7 +275,15 @@ SHA-256 values for both Setup and Uninstall are recorded in SHA256SUMS.txt.
     [Text.Encoding]::ASCII
 )
 
-$bundleName = "FFWFrostburn8-Windows-x64.zip"
+$bundleName = if ($mod.releaseChannel -eq "compatibility-preview") {
+    "FFWFrostburn8-v$($mod.version)-FFW-$($lock.target.productVersion -replace '[^0-9A-Za-z]+', '-')-PREVIEW-Windows-x64.zip"
+} elseif ($mod.releaseChannel -eq "legacy-runtime-preview") {
+    "FFWFrostburn8-v$($mod.version)-FFW-$($lock.target.productVersion -replace '[^0-9A-Za-z]+', '-')-LEGACY-TEST-Windows-x64.zip"
+} elseif ($mod.releaseChannel -eq "diagnostic-preview") {
+    "FFWFrostburn8-v$($mod.version)-DIAGNOSTICS-Windows-x64.zip"
+} else {
+    "FFWFrostburn8-Windows-x64.zip"
+}
 $bundlePath = Join-Path $outputRoot $bundleName
 if (Test-Path -LiteralPath $bundlePath -PathType Container) {
     throw "Bundle output path is a directory: $bundlePath"

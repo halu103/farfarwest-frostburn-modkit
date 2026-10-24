@@ -1,5 +1,11 @@
 # Publishing the player build
 
+**Do not publish the local v1.2.3 EOS legacy-runtime test as verified
+eight-player support.** It preserves the earlier capacity/Invite logic, but
+the new EOS room path has not been tested with a fifth vanilla client. The
+v1.2.2 commands and release labels below are historical examples for the
+previous game build, not current publishing steps.
+
 The GitHub repository serves two different audiences:
 
 - **Code → Download ZIP** is an automatically generated source archive for

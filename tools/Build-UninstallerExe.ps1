@@ -83,6 +83,7 @@ namespace FFWFrostburn8Installer
     internal static class BuildInfo
     {
         internal const string ModVersion = $(ConvertTo-CSharpStringLiteral ([string]$mod.version));
+        internal static readonly string ReleaseChannel = $(ConvertTo-CSharpStringLiteral ([string]$mod.releaseChannel));
         internal const string GameVersion = $(ConvertTo-CSharpStringLiteral ([string]$lock.target.productVersion));
         internal const string GameExecutableSha256 = $(ConvertTo-CSharpStringLiteral ([string]$lock.target.executableSha256));
         internal const string Ue4ssCommit = $(ConvertTo-CSharpStringLiteral ([string]$lock.ue4ss.commit));

@@ -136,6 +136,7 @@ $manifest = [pscustomobject]@{
         id = $mod.id
         name = $mod.name
         version = $mod.version
+        releaseChannel = $mod.releaseChannel
         license = $mod.license
         maxPlayers = $actualMaxPlayers
         sessionRows = [int]$mod.sessionRows

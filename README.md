@@ -2,8 +2,11 @@
 
 An independent, source-owned UE4SS mod and maintenance kit for raising Far Far
 West's multiplayer capacity to eight players after the Frostburn/Unreal Engine
-5.8 update. Version 1.2.2 is an experimental build intended to test whether
-only the host can install the mod while guests remain completely vanilla.
+5.8 update. The latest public version is 1.2.2. The local 1.2.3 source is an
+unreleased legacy-runtime test for game `0.3.0.7 - CL 2852`. It preserves the
+earlier capacity and Invite behavior but is not a verified eight-player or
+gameplay-fix release. An installer refusing a new version does not, by itself,
+prove that the already-installed mod stopped working.
 
 The repository contains the complete Lua source for `FFWFrostburn8`. It does
 not download, copy, or package another player's-capacity mod, and it does not
@@ -14,6 +17,10 @@ contain cooked game assets.
 **Players should use the release build, not GitHub's green `Code` button:**
 
 [Download FFWFrostburn8 for Windows x64](https://github.com/halu103/farfarwest-frostburn-modkit/releases/latest/download/FFWFrostburn8-Windows-x64.zip)
+
+**The currently published v1.2.2 installer targets the old game
+`0.2.0.20 - CL 915` and correctly refuses the new game.** Do not force it or
+assume this link serves the unreleased 1.2.3 legacy-runtime test.
 
 Extract that ZIP and run `FFWFrostburn8-Setup.exe`, which is immediately at the
 archive root. The same folder contains `FFWFrostburn8-Uninstall.exe` for safe,
@@ -38,14 +45,46 @@ to the first GitHub Release; see [publishing a release](docs/PUBLISHING.md).
 
 Current baseline:
 
-- Far Far West: `0.2.0.20 - CL 915`
+- Far Far West: local preview targets `0.3.0.7 - CL 2852`; public v1.2.2
+  targets `0.2.0.20 - CL 915`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- Owned mod: `FFWFrostburn8 v1.2.2` (MIT, host-only experimental)
-- Target capacity: `8`
-- Session UI: `1 host + 7 invite slots` when hosting alone
+- Owned mod: public `v1.2.2`; local legacy-runtime test `v1.2.3` (MIT,
+  host-only experimental)
+- Target capacity: `8` (old runtime logic retained; EOS multiplayer unverified)
+- Session UI target: `1 host + 7 invite slots` (old runtime logic retained)
 - Package mode: source-owned Lua only
 - Vanilla-client compatibility: unverified until a real 5–8 player test passes
+
+### Known multiplayer limitations
+
+In a five-player Jungle run on 2026-09-27, players reported that activating
+all four TNT missile levers simultaneously did not complete the objective;
+the same four levers worked after one guest left. The logs confirm five-player
+and four-player intervals in that objective's level, but do not record lever
+states, so the exact Blueprint condition is not yet proven or fixed. The
+current release should not be described as supporting every objective with
+five to eight players.
+
+A guest who deliberately uses Leave/Back and rejoins can lose Jokers found
+during the run, while players who remain keep theirs. The game's developer
+described restoring Jokers after disconnection as a
+work-in-progress feature in its
+[September 19 devlog](https://steamcommunity.com/app/3124540/announcements/).
+That statement does not establish whether voluntary Leave/Back should restore
+Jokers, or whether this mod affects that behavior. See the
+[read-only investigation notes](docs/ISSUE_DIAGNOSTICS.md). These issues are
+**not fixed in v1.2.2 or the local v1.2.3 legacy-runtime test**. Game
+`0.3.0.0` moved matchmaking to Epic Online Services, so the old Steam
+creation/kick hooks no longer register. A prior single-host run showed seven
+Invite buttons but did not test a fifth client. Do not publish v1.2.3 as a
+verified gameplay fix. [Official October update notes](https://steamcommunity.com/app/3124540/allnews)
+also describe new built-in Joker reconnection saving and changed missile
+progression; older assumptions require retesting.
+
+**Do not describe the local v1.2.3 test as verified eight-player support.**
+The old capacity and Invite code is active, but a two-player smoke test and
+seven visible Invite buttons do not prove that guests 5–8 can join through EOS.
 
 ## Install with the EXE (recommended)
 
@@ -282,7 +321,7 @@ pwsh.exe -NoLogo -NoProfile -File .\tools\Test-RuntimeLog.ps1 `
 The host log cannot inspect guest disks, so it deliberately reports
 `vanillaClientInstallationStateProven: false`. Confirm separately that every
 guest has no `dwmapi.dll`/UE4SS installation. Test clients 2–4 first, then the
-fifth via both session code and Steam Invite, then clients 6–8, map travel,
+fifth via session code and the game's current invite flow, then clients 6–8, map travel,
 one mission objective, reconnect, and a manual kick. Do not advertise
 host-only support until that matrix succeeds.
 

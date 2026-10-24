@@ -32,7 +32,8 @@ namespace FFWFrostburn8Installer
             {
                 MessageBox.Show(
                     "FFWFrostburn8 Installer " + BuildInfo.ModVersion + Environment.NewLine +
-                    "Far Far West " + BuildInfo.GameVersion,
+                    "Far Far West " + BuildInfo.GameVersion + Environment.NewLine +
+                    "Channel: " + BuildInfo.ReleaseChannel,
                     "FFWFrostburn8",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
@@ -118,7 +119,11 @@ namespace FFWFrostburn8Installer
 
         internal InstallerForm(string requestedGameRoot)
         {
-            Text = "FFWFrostburn8 v" + BuildInfo.ModVersion + " - Host-Only Experimental";
+            bool compatibilityPreview = BuildInfo.ReleaseChannel == "compatibility-preview";
+            bool legacyRuntimePreview = BuildInfo.ReleaseChannel == "legacy-runtime-preview";
+            Text = "FFWFrostburn8 v" + BuildInfo.ModVersion +
+                (compatibilityPreview ? " - EOS Diagnostics Preview" :
+                 legacyRuntimePreview ? " - EOS Legacy Runtime Test" : " - Host-Only Experimental");
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(760, 565);
             MinimumSize = new Size(720, 540);
@@ -130,7 +135,11 @@ namespace FFWFrostburn8Installer
             title.AutoSize = true;
             title.Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold, GraphicsUnit.Point);
             title.Location = new Point(24, 18);
-            title.Text = "Far Far West - 8 Players Host-Only Test";
+            title.Text = compatibilityPreview
+                ? "Far Far West - EOS Compatibility Preview"
+                : legacyRuntimePreview
+                    ? "Far Far West - 8 Players EOS Test"
+                    : "Far Far West - 8 Players Host-Only Test";
             Controls.Add(title);
 
             var version = new Label();
@@ -138,7 +147,8 @@ namespace FFWFrostburn8Installer
             version.ForeColor = Color.DimGray;
             version.Location = new Point(27, 58);
             version.Text = "Mod v" + BuildInfo.ModVersion + "  |  Game " + BuildInfo.GameVersion +
-                "  |  Experimental offline package";
+                "  |  " + (compatibilityPreview ? "Diagnostics only" :
+                    legacyRuntimePreview ? "Legacy runtime, unverified on EOS" : "Experimental offline package");
             Controls.Add(version);
 
             var warning = new Label();
@@ -148,10 +158,17 @@ namespace FFWFrostburn8Installer
             warning.Location = new Point(24, 88);
             warning.Size = new Size(712, 72);
             warning.Padding = new Padding(10, 8, 10, 8);
-            warning.Text =
-                "HOST ONLY / CHỈ HOST: do not install this test build on guests. Close Far Far West first. " +
-                "The current dwmapi.dll and ue4ss folder are backed up and replaced. The installer never " +
-                "starts, closes, or restarts the game.";
+            warning.Text = legacyRuntimePreview
+                ? "HOST-ONLY EOS TEST / CHƯA XÁC NHẬN 8 NGƯỜI: earlier capacity and Invite logic is active. " +
+                  "One guest joining does not prove players 5-8 can join. Tick Allow mods. Close the game first; " +
+                  "UE4SS files are backed up and replaced. The installer never starts or restarts the game."
+                : compatibilityPreview
+                ? "EOS PREVIEW / BẢN THỬ: diagnostics only. Eight-player capacity and extra Invite rows " +
+                  "are DISABLED; this is NOT a multiplayer fix. Close Far Far West first. Current UE4SS " +
+                  "files are backed up and replaced; the installer never starts or restarts the game."
+                : "HOST ONLY / CHỈ HOST: do not install this test build on guests. Close Far Far West first. " +
+                  "The current dwmapi.dll and ue4ss folder are backed up and replaced. The installer never " +
+                  "starts, closes, or restarts the game.";
             Controls.Add(warning);
 
             var pathLabel = new Label();
@@ -297,9 +314,19 @@ namespace FFWFrostburn8Installer
                 return;
             }
 
+            string previewWarning = BuildInfo.ReleaseChannel == "compatibility-preview"
+                ? "EOS COMPATIBILITY PREVIEW: this installs read-only diagnostics. " +
+                  "Eight-player capacity, extra Invite rows, and the old join guard are disabled. " +
+                  "It does not fix the missile or Joker issues. " + Environment.NewLine + Environment.NewLine
+                : BuildInfo.ReleaseChannel == "legacy-runtime-preview"
+                ? "EOS LEGACY RUNTIME TEST: earlier capacity and Invite logic is active, but " +
+                  "joining with one guest does not verify players 5-8 or host-only vanilla guests. " +
+                  "Missile and Joker issues are not fixed. " + Environment.NewLine + Environment.NewLine
+                : String.Empty;
             string message =
                 "Install FFWFrostburn8 v" + BuildInfo.ModVersion + " into:" +
                 Environment.NewLine + Environment.NewLine + gameRoot + Environment.NewLine + Environment.NewLine +
+                previewWarning +
                 "HOST-ONLY EXPERIMENTAL: install on the host, not on guests. " +
                 "The current UE4SS folder and known legacy More Players files will be backed up and replaced. " +
                 "Continue?";

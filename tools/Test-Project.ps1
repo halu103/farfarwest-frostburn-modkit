@@ -105,6 +105,8 @@ Assert-ProjectCheck -Condition ($lock.schemaVersion -eq 2) -Message "Unsupported
 Assert-ProjectCheck -Condition ($mod.schemaVersion -eq 1) -Message "Unsupported mod metadata schema."
 Assert-ProjectCheck -Condition ($mod.id -eq "FFWFrostburn8") -Message "Unexpected owned mod id."
 Assert-ProjectCheck -Condition ($mod.version -match "^\d+\.\d+\.\d+$") -Message "Mod version must use semantic versioning."
+Assert-ProjectCheck -Condition ($mod.releaseChannel -in @("stable", "diagnostic-preview", "compatibility-preview", "legacy-runtime-preview")) `
+    -Message "Mod releaseChannel must explicitly be stable, diagnostic-preview, compatibility-preview, or legacy-runtime-preview."
 Assert-ProjectCheck -Condition ([int]$mod.maxPlayers -eq 8) -Message "Owned mod must target eight players."
 Assert-ProjectCheck -Condition ([int]$mod.sessionRows -eq 8) -Message "Session UI must target eight rows."
 Assert-ProjectCheck -Condition ([int]$mod.soloInviteSlots -eq 7) -Message "Solo host UI must target seven invite slots."
@@ -192,6 +194,12 @@ if ($sourceMod -and (Test-Path -LiteralPath $sourceMod -PathType Container)) {
             -Message "Lua MOD_VERSION does not match src/mod.json."
         Assert-ProjectCheck -Condition ($mainLua -match $maxPattern) `
             -Message "Lua TARGET_MAX_PLAYERS does not match src/mod.json."
+        if ($mod.releaseChannel -eq "legacy-runtime-preview") {
+            Assert-ProjectCheck -Condition ($mainLua -match '(?m)^local DIAGNOSTICS_ONLY\s*=\s*false\s*$' -and
+                $mainLua -match 'legacyCapacityWrites=true' -and
+                $mainLua -match 'runtimeSessionUi=true') `
+                -Message "The legacy-runtime preview must preserve active capacity and Invite-row logic."
+        }
         Assert-ProjectCheck -Condition ($mainLua -match 'UI_Menu_Container_CurrentSession' -and $mainLua -match 'VerticalBox_Players') `
             -Message "Owned Lua source is missing the current-session UI expansion."
         Assert-ProjectCheck -Condition ($mainLua -match 'UI_Menu_Button_Session_Invite') `

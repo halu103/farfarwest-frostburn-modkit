@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "FFWFrostburn8",
-  "name": "Far Far West Frostburn 8 Players - Host-Only Experimental",
-  "version": "1.2.2",
+  "name": "Far Far West 8 Players - Legacy Runtime Test for EOS",
+  "version": "1.2.3",
+  "releaseChannel": "legacy-runtime-preview",
   "license": "MIT",
   "maxPlayers": 8,
   "sessionRows": 8,

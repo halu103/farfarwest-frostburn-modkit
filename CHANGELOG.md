@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.2.3 - game 0.3.0.7 legacy-runtime test (unreleased)
+
+- Pin the installer to the installed Far Far West `0.3.0.7 - CL 2852`
+  executable and its SHA-256; continue to refuse other builds rather than
+  forcing installation after a game patch.
+- Verify all three existing UE4SS signatures occur exactly once in the new
+  executable. This is a static compatibility check, not a multiplayer test.
+- Label the installer bundle as an EOS legacy-runtime test. The game moved
+  matchmaking to Epic Online Services; old Steam creation/kick hooks do not
+  register in the observed 0.3.0.0 run, so 5–8 vanilla clients are unverified.
+- Preserve the earlier MaxPlayers/session-cap and Invite-row runtime logic
+  rather than conflating an installer version refusal with a runtime failure.
+  A single guest joining proves only that a two-player room works; it does not
+  validate players 5–8 or host-only vanilla-client compatibility.
+- Preserve the diagnostic source added for the earlier local v1.2.3 preview,
+  but do not claim it fixes mission or Joker behavior. Its Joker counts were
+  unreadable on the previous 0.3.0.0 run and require new-game investigation.
+
+- Add bounded, read-only host-side snapshots for the TNT missile objective,
+  including player count, actual lever states, ignition prerequisites, and
+  whether the rocket has already blown.
+- Trace the game's own lever-enable and ignition calls to identify the normal
+  four-player transition before changing mission behavior.
+- Record anonymized per-PlayerState Joker collection counts, including the
+  nested item-Joker collection, across departure and rejoin.
+- Do not restore Joker inventory or force missile ignition. Neither proposed
+  gameplay fix is verified; do not publish this preview as a bug-fix release.
+- No game installation or multiplayer runtime validation was performed during
+  this build.
+
 ## 1.2.2 - 2026-09-13
 
 - Add a standalone native x64 `FFWFrostburn8-Uninstall.exe` so players no

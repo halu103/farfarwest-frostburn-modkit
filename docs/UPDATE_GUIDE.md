@@ -1,5 +1,10 @@
 # Updating after a Far Far West patch
 
+The local v1.2.3 build for game 0.3.0.7 is an opt-in legacy-runtime test. It
+preserves the previous backend capacity and Invite-row logic; it is not a
+verified eight-player update. Do not publish it as a gameplay fix merely
+because static signatures, an installer build, or one guest joining pass.
+
 This project owns its multiplayer Lua source. Updating it never requires a
 download from a third-party mod page.
 
@@ -207,7 +212,7 @@ label:
 
 1. Host only has v1.2.2; all guests are verified vanilla.
 2. Clients 2–4 join normally.
-3. Client 5 joins once by session code and once by Steam Invite.
+3. Client 5 joins once by session code and once by the game's current invite flow.
 4. Clients 6–8 join and all eight names appear.
 5. The group travels to a map, advances one objective, and reconnects one guest.
 6. The host manually kicks a guest to prove moderation was not suppressed.

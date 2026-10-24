@@ -4,11 +4,14 @@
 -- or code from another multiplayer mod.
 
 local MOD_ID = "FFWFrostburn8"
-local MOD_VERSION = "1.2.2"
+local MOD_VERSION = "1.2.3"
 local TARGET_MAX_PLAYERS = 8
 local VANILLA_MAX_PLAYERS = 4
 local TARGET_SESSION_ROWS = TARGET_MAX_PLAYERS
 local HOST_ONLY_EXPERIMENTAL = true
+-- Keep the earlier runtime capacity and UI behavior for this opt-in test build.
+-- A working two-player room does not prove EOS accepts players five to eight.
+local DIAGNOSTICS_ONLY = false
 local TAG = string.format("[%s v%s]", MOD_ID, MOD_VERSION)
 
 local CURRENT_SESSION_CLASS_PATH = "/Game/Interfaces/MainMenu/UI_Menu_Container_CurrentSession.UI_Menu_Container_CurrentSession_C"
@@ -18,11 +21,13 @@ local WIDGET_BLUEPRINT_LIBRARY_PATH = "/Script/UMG.Default__WidgetBlueprintLibra
 local CURRENT_SESSION_CONSTRUCT_PATH = CURRENT_SESSION_CLASS_PATH .. ":Construct"
 local CREATE_ROOM_FUNCTION_PATH = "/Game/Gamework/BP_Manager_Multiplayer.BP_Manager_Multiplayer_C:F_CreateSession"
 local KICK_PLAYER_FUNCTION_PATH = "/Script/SteamCorePro.SteamUtilities:KickPlayer"
+local MISSILE_FUNCTION_BASE_PATH = "/Game/Objectives/Assets/TntMissile/BP_TntMissileLauncher.BP_TntMissileLauncher_C:"
 
 local trackedSessions = {}
 local trackedManagers = {}
 local trackedGameStates = {}
 local trackedSessionWidgets = {}
+local trackedMissileObjectives = {}
 local hookedFunctions = {}
 local describedFunctions = {}
 local reportedUiErrors = {}
@@ -53,6 +58,19 @@ local hostOnlyLobbyWrites = 0
 local hostOnlyLobbySkips = 0
 local sessionUiConstructHookRegistered = false
 local hostOnlyHooks = {}
+local jokerDiagnosticStates = {}
+local jokerDiagnosticPlayerCounts = {}
+local missileDiagnosticStates = {}
+local diagnosticPlayerIds = {}
+local nextDiagnosticPlayerId = 0
+local jokerDiagnosticLines = 0
+local jokerRosterLines = 0
+local missileDiagnosticLines = 0
+local missileEventLines = 0
+local missileTraceHooks = {}
+local missileTraceHookErrors = {}
+local MAX_DIAGNOSTIC_LINES = 40
+local MAX_ROSTER_LINES = 80
 
 local function log(message)
     print(string.format("%s %s\n", TAG, message))
@@ -192,7 +210,7 @@ local function getHostOnlyPlayerCount()
 end
 
 local function registerHostOnlyRoomHook()
-    if not HOST_ONLY_EXPERIMENTAL or hostOnlyRoomHookRegistered then
+    if DIAGNOSTICS_ONLY or not HOST_ONLY_EXPERIMENTAL or hostOnlyRoomHookRegistered then
         return hostOnlyRoomHookRegistered
     end
 
@@ -225,7 +243,7 @@ local function registerHostOnlyRoomHook()
 end
 
 local function registerHostOnlyJoinGuard()
-    if not HOST_ONLY_EXPERIMENTAL or hostOnlyJoinGuardRegistered then
+    if DIAGNOSTICS_ONLY or not HOST_ONLY_EXPERIMENTAL or hostOnlyJoinGuardRegistered then
         return hostOnlyJoinGuardRegistered
     end
 
@@ -724,6 +742,10 @@ local function expandCurrentSessionUi(sessionWidget, reason)
         return false
     end
     remember(trackedSessionWidgets, sessionWidget)
+    if DIAGNOSTICS_ONLY then
+        logUiStateOnce("EOSPreviewUiSkip", "room capacity unverified; do not create invite rows")
+        return false
+    end
 
     local panelOk, panel = pcall(function()
         return sessionWidget:GetPropertyValue("VerticalBox_Players")
@@ -1064,6 +1086,11 @@ local function setObjectCap(object, source, collection)
         remember(collection, object)
     end
 
+    if DIAGNOSTICS_ONLY then
+        logUiStateOnce("EOSPreviewCapSkip", "room capacity unverified; MaxPlayers left unchanged")
+        return false
+    end
+
     local readOk, before = pcall(function()
         return object:GetPropertyValue("MaxPlayers")
     end)
@@ -1119,6 +1146,232 @@ local function observePlayers(gameState)
     end
 end
 
+-- These snapshots are deliberately read-only. A disappearing Joker may be a
+-- replication/UI problem rather than lost inventory; writing PlayerState data
+-- here could turn a transient display bug into permanent save corruption.
+local function diagnosticCollectionCount(object, propertyName)
+    local propertyOk, value = pcall(function()
+        return object:GetPropertyValue(propertyName)
+    end)
+    if not propertyOk or value == nil then
+        return "?"
+    end
+    local arrayOk, count = pcall(function()
+        return value:GetArrayNum()
+    end)
+    if arrayOk and type(count) == "number" then
+        return tostring(count)
+    end
+    local collectionOk
+    collectionOk, count = pcall(function()
+        return #value
+    end)
+    if collectionOk and type(count) == "number" then
+        return tostring(count)
+    end
+    return "?"
+end
+
+local function diagnosticItemJokerCount(playerState)
+    local ok, count = pcall(function()
+        local itemJokers = playerState:GetPropertyValue("itemJokers_221_B68401A4476969C408297F9FD92F3128")
+        local collection = itemJokers["jokers_13_7822C195413EA2810E969F8C260AA8B6"]
+        return collection:GetArrayNum()
+    end)
+    if ok and type(count) == "number" then
+        return tostring(count)
+    end
+    return "?"
+end
+
+local function observeJokers(gameState)
+    local states = readPlayerStates(gameState)
+    if states == nil then
+        return
+    end
+
+    local parts = {}
+    for index, playerState in ipairs(states) do
+        local playerStateName = getObjectName(playerState)
+        if diagnosticPlayerIds[playerStateName] == nil then
+            nextDiagnosticPlayerId = nextDiagnosticPlayerId + 1
+            diagnosticPlayerIds[playerStateName] = nextDiagnosticPlayerId
+        end
+        parts[index] = string.format(
+            "p%d:%s/%s/%s/%s",
+            diagnosticPlayerIds[playerStateName],
+            diagnosticCollectionCount(playerState, "jokers_13_7822C195413EA2810E969F8C260AA8B6"),
+            diagnosticItemJokerCount(playerState),
+            diagnosticCollectionCount(playerState, "runtimerJokers"),
+            diagnosticCollectionCount(playerState, "heroJokers")
+        )
+    end
+
+    local gameStateName = getObjectName(gameState)
+    local signature = table.concat(parts, ",")
+    local previous = jokerDiagnosticStates[gameStateName]
+    if previous == signature then
+        return
+    end
+
+    local rosterChanged = jokerDiagnosticPlayerCounts[gameStateName] ~= #states
+    if rosterChanged then
+        if jokerRosterLines >= MAX_ROSTER_LINES then
+            return
+        end
+        jokerRosterLines = jokerRosterLines + 1
+    else
+        if jokerDiagnosticLines >= MAX_DIAGNOSTIC_LINES then
+            return
+        end
+        jokerDiagnosticLines = jokerDiagnosticLines + 1
+    end
+
+    jokerDiagnosticStates[gameStateName] = signature
+    jokerDiagnosticPlayerCounts[gameStateName] = #states
+    local authorityOk, hasAuthority = pcall(function()
+        return gameState:HasAuthority()
+    end)
+    log(string.format(
+        "JokerSnapshot players=%d rosterChanged=%s authority=%s state=%s meaning=read-only-counts-not-save-proof",
+        #states,
+        tostring(rosterChanged),
+        authorityOk and tostring(hasAuthority) or "?",
+        signature
+    ))
+end
+
+local function diagnosticProperty(object, propertyName)
+    local ok, value = pcall(function()
+        return object:GetPropertyValue(propertyName)
+    end)
+    if not ok then
+        return "?"
+    end
+    if type(value) == "number" or type(value) == "boolean" then
+        return tostring(value)
+    end
+    local arrayOk, arrayCount = pcall(function()
+        return value:GetArrayNum()
+    end)
+    if arrayOk and type(arrayCount) == "number" then
+        return "array:" .. tostring(arrayCount)
+    end
+    return type(value)
+end
+
+local function diagnosticPulledLevers(object)
+    local ok, levers = pcall(function()
+        return object:GetPropertyValue("levers")
+    end)
+    if not ok or levers == nil then
+        return "?"
+    end
+    local countOk, count = pcall(function()
+        return levers:GetArrayNum()
+    end)
+    if not countOk or type(count) ~= "number" or count < 1 or count > TARGET_MAX_PLAYERS then
+        return "?"
+    end
+
+    local pulled = 0
+    local unknown = 0
+    for index = 1, count do
+        local readOk, isPulled = pcall(function()
+            local lever = levers[index]
+            if not isValid(lever) then
+                return nil
+            end
+            return lever:GetPropertyValue("isPulled")
+        end)
+        if readOk and isPulled == true then
+            pulled = pulled + 1
+        elseif not readOk or isPulled ~= false then
+            unknown = unknown + 1
+        end
+    end
+    return string.format("%d/%d+%dunknown", pulled, count, unknown)
+end
+
+local function observeMissileObjective(object)
+    if missileDiagnosticLines >= MAX_DIAGNOSTIC_LINES then
+        return
+    end
+
+    remember(trackedMissileObjectives, object)
+    local players = getHostOnlyPlayerCount()
+    if type(players) ~= "number" or players < VANILLA_MAX_PLAYERS then
+        return
+    end
+
+    local state = string.format(
+        "players=%d enabled=%s levers=%s pulled=%s leversEnabled=%s leverState=%s hasBlown=%s requiredTnt=%s stackedTnt=%s",
+        players,
+        diagnosticProperty(object, "amountLeversEnabled"),
+        diagnosticProperty(object, "levers"),
+        diagnosticPulledLevers(object),
+        diagnosticProperty(object, "leversEnabled"),
+        diagnosticProperty(object, "leverState"),
+        diagnosticProperty(object, "hasBlown"),
+        diagnosticProperty(object, "requiredTnt"),
+        diagnosticProperty(object, "stackedTnt")
+    )
+    local objectName = getObjectName(object)
+    if missileDiagnosticStates[objectName] == state then
+        return
+    end
+
+    missileDiagnosticStates[objectName] = state
+    missileDiagnosticLines = missileDiagnosticLines + 1
+    log(string.format("MissionSnapshot type=TntMissileLauncher object=%s %s", objectName, state))
+end
+
+-- Observe the game's own ignition path before attempting any mission patch.
+-- Blueprint hooks run after the function and never alter mission state here.
+local function registerMissileTraceHooks()
+    for _, functionName in ipairs({ "F_EnableLevers", "F_StartIgnition", "F_StartMissileIgnition" }) do
+        if not missileTraceHooks[functionName] then
+            local path = MISSILE_FUNCTION_BASE_PATH .. functionName
+            local foundOk, fn = pcall(function()
+                return StaticFindObject(path)
+            end)
+            if foundOk and isValid(fn) then
+                local hookOk, preId, postId = pcall(function()
+                    return RegisterHook(path, function(context)
+                        if missileEventLines >= MAX_DIAGNOSTIC_LINES then
+                            return
+                        end
+                        local actor, readable = readHookParam(context)
+                        if not readable or not isValid(actor) then
+                            return
+                        end
+                        missileEventLines = missileEventLines + 1
+                        local authorityOk, authority = pcall(function()
+                            return actor:HasAuthority()
+                        end)
+                        log(string.format(
+                            "MissionEvent function=%s players=%s authority=%s enabled=%s pulled=%s hasBlown=%s",
+                            functionName,
+                            tostring(getHostOnlyPlayerCount()),
+                            authorityOk and tostring(authority) or "?",
+                            diagnosticProperty(actor, "amountLeversEnabled"),
+                            diagnosticPulledLevers(actor),
+                            diagnosticProperty(actor, "hasBlown")
+                        ))
+                    end)
+                end)
+                if hookOk and type(preId) == "number" and type(postId) == "number" then
+                    missileTraceHooks[functionName] = { preId = preId, postId = postId }
+                    log(string.format("MissionTraceHook registered function=%s", functionName))
+                elseif not missileTraceHookErrors[functionName] then
+                    missileTraceHookErrors[functionName] = true
+                    logError("MissionTraceHook " .. functionName, hookOk and "no-hook-ids" or preId)
+                end
+            end
+        end
+    end
+end
+
 local function applyTrackedCaps()
     for name, object in pairs(trackedSessions) do
         if isValid(object) then
@@ -1139,8 +1392,20 @@ local function applyTrackedCaps()
     for name, object in pairs(trackedGameStates) do
         if isValid(object) then
             observePlayers(object)
+            observeJokers(object)
         else
             trackedGameStates[name] = nil
+            jokerDiagnosticStates[name] = nil
+            jokerDiagnosticPlayerCounts[name] = nil
+        end
+    end
+
+    for name, object in pairs(trackedMissileObjectives) do
+        if isValid(object) then
+            observeMissileObjective(object)
+        else
+            trackedMissileObjectives[name] = nil
+            missileDiagnosticStates[name] = nil
         end
     end
 
@@ -1426,6 +1691,14 @@ local function registerCapacityHook(fn)
         return false
     end
 
+    if DIAGNOSTICS_ONLY then
+        if not describedFunctions["EOSPreviewNativeSkip:" .. functionPath] then
+            describedFunctions["EOSPreviewNativeSkip:" .. functionPath] = true
+            log(string.format("EOSPreviewNativeSkip path=%s reason=backend-capacity-unverified", functionPath))
+        end
+        return false
+    end
+
     local hookOk, preId, postId = pcall(function()
         return RegisterHook(functionPath, function(_, ...)
             if isHostOnlyLobbyFunction(functionPath) and hostOnlyRoomGate ~= "armed" then
@@ -1545,6 +1818,11 @@ local function registerObjectNotifications()
         NotifyOnNewObject("/Script/Engine.GameStateBase", function(object)
             observePlayers(object)
         end)
+        NotifyOnNewObject("/Game/Objectives/Assets/TntMissile/BP_TntMissileLauncher.BP_TntMissileLauncher_C", function(object)
+            remember(trackedMissileObjectives, object)
+            registerMissileTraceHooks()
+            observeMissileObjective(object)
+        end)
         NotifyOnNewObject("/Game/Gamework/BP_Manager_Multiplayer.BP_Manager_Multiplayer_C", function(object)
             setObjectCap(object, "Manager/new", trackedManagers)
             registerHostOnlyHooks()
@@ -1609,7 +1887,9 @@ log(string.format("Mod loaded - v%s", MOD_VERSION))
 log(string.format("Target MaxPlayers=%d", TARGET_MAX_PLAYERS))
 log(string.format("Target SessionRows=%d InviteSlotsWhenSolo=%d", TARGET_SESSION_ROWS, TARGET_SESSION_ROWS - 1))
 log("HostOnlyMode=EXPERIMENTAL vanillaClients=UNVERIFIED allowModsRequired=true manualKickPreserved=true")
-log("Implementation=source-owned-lua runtimeSessionUi=true allowModsUiGate=room-creation-sticky synchronizedMemberRows=true reflectedSteamLobbyCap=true selectiveJoinKickGuard=true cookedAssets=false")
+log("LegacyRuntimePreview=EOS game-0.3.0.7 old-capacity-and-UI-logic-active five-to-eight-players-unverified")
+log("LegacyRuntimePreviewSafety=allow-mods-required old-Steam-room-and-join-hooks-unverified no-proof-from-one-guest")
+log("Implementation=source-owned-lua runtimeSessionUi=true legacyCapacityWrites=true eosCapacityUnverified=true selectiveJoinKickGuard=unverified cookedAssets=false")
 
 registerObjectNotifications()
 registerGameStateHook()
@@ -1622,12 +1902,14 @@ ExecuteInGameThreadWithDelay(100, function()
     registerHostOnlyHooks()
     registerSessionUiConstructHook()
     discoverCapacityHooks()
+    registerMissileTraceHooks()
 end)
 ExecuteInGameThreadWithDelay(1500, function()
     scanExisting("Startup1500ms")
     registerHostOnlyHooks()
     registerSessionUiConstructHook()
     discoverCapacityHooks()
+    registerMissileTraceHooks()
     printStatus("Startup1500ms")
 end)
 ExecuteInGameThreadWithDelay(5000, function()
@@ -1635,6 +1917,7 @@ ExecuteInGameThreadWithDelay(5000, function()
     registerHostOnlyHooks()
     registerSessionUiConstructHook()
     discoverCapacityHooks()
+    registerMissileTraceHooks()
     printStatus("Startup5000ms")
 end)
 
@@ -1650,5 +1933,9 @@ LoopInGameThreadWithDelay(500, function()
         registerHostOnlyHooks()
         registerSessionUiConstructHook()
         discoverCapacityHooks()
+        registerMissileTraceHooks()
+        if missileDiagnosticLines < MAX_DIAGNOSTIC_LINES then
+            scanClass("BP_TntMissileLauncher_C", observeMissileObjective)
+        end
     end
 end)
