@@ -1,8 +1,8 @@
-# Far Far West Frostburn 8 Players — Host-Only Experimental
+# Far Far West Frostburn 8 Players — v1.2.3
 
 An independent, source-owned UE4SS mod and maintenance kit for raising Far Far
 West's multiplayer capacity to eight players after the Frostburn/Unreal Engine
-5.8 update. The local v1.2.4 source targets game `0.3.0.7 - CL 2852`, retains
+5.8 update. Official release v1.2.3 targets game `0.3.0.7 - CL 2852`, retains
 the earlier capacity/Invite behavior, and adds missile timing and same-map Joker
 reconnect fixes. Offline tests pass; live multiplayer validation is pending.
 An installer refusing a new version does not, by itself, prove that the
@@ -16,16 +16,18 @@ contain cooked game assets.
 
 **Players should use the release build, not GitHub's green `Code` button:**
 
-[Download FFWFrostburn8 for Windows x64](https://github.com/halu103/farfarwest-frostburn-modkit/releases/latest/download/FFWFrostburn8-Windows-x64.zip)
+[Download Setup / Uninstall for Windows x64](https://github.com/halu103/farfarwest-frostburn-modkit/releases)
 
 **Check the downloaded filename and supported game version.** Older v1.2.2
-installers target `0.2.0.20 - CL 915` and refuse the new game. Local v1.2.4
-gameplay test packages are not automatically published to the link above.
+installers target `0.2.0.20 - CL 915` and refuse the new game. The earlier
+v1.2.3 legacy-runtime test is a separate historical package, without the new
+missile/Joker adapters. Use the official v1.2.3 release notes and checksums to
+distinguish it. A local build is not automatically uploaded to GitHub.
 
-Extract that ZIP and run `FFWFrostburn8-Setup.exe`, which is immediately at the
-archive root. The same folder contains `FFWFrostburn8-Uninstall.exe` for safe,
-mod-only removal with an optional advanced snapshot restore. No source browsing or PowerShell is required. The
-download also contains a short Vietnamese/English guide and SHA-256 checksums.
+Download the file ending in `Setup.exe` and run it directly. The separate
+`Uninstall.exe` provides safe, mod-only removal with an optional advanced
+snapshot restore. The adjacent `.sha256.txt` files contain their checksums.
+No ZIP bundle, source browsing or PowerShell is required.
 
 ## Support development
 
@@ -40,16 +42,20 @@ If this mod is useful to you, you can support its continued maintenance:
 
 GitHub's automatically generated **Source code (zip)** and **Source code
 (tar.gz)** files contain developer source only and are not the installer. The
-direct link above becomes available after the corresponding asset is uploaded
-to the first GitHub Release; see [publishing a release](docs/PUBLISHING.md).
+downloads become available after the corresponding EXEs are uploaded to a
+public GitHub Release; see [publishing a release](docs/PUBLISHING.md).
+
+An optional [ZIP bundle](https://github.com/halu103/farfarwest-frostburn-modkit/releases/latest/download/FFWFrostburn8-Windows-x64.zip)
+only works if the latest normal release includes that exact asset. It is not
+required for installation; use the release's standalone Setup/Uninstall files.
 
 Current baseline:
 
 - Far Far West: `0.3.0.7 - CL 2852`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- Owned mod: local gameplay fix preview `v1.2.4` (MIT,
-  host-only experimental)
+- Owned mod: official release `v1.2.3` (MIT, stable packaging channel;
+  host-only deployment remains experimental)
 - Target capacity: `8` (old runtime logic retained; EOS multiplayer unverified)
 - Session UI target: `1 host + 7 invite slots` (old runtime logic retained)
 - Package mode: source-owned Lua only
@@ -61,9 +67,10 @@ In a five-player Jungle run on 2026-09-27, players reported that activating
 all four TNT missile levers simultaneously did not complete the objective;
 the same four levers worked after one guest left. The logs confirm five-player
 and four-player intervals in that objective's level, but do not record lever
-states, so the exact Blueprint condition is not yet proven or fixed. The
-current release should not be described as supporting every objective with
-five to eight players.
+states. Subsequent analysis of the installed CL2852 assets found a different
+cause: the four-lever success check already exists, but initialization lacks
+5+ player cases and produces a zero-second timer. v1.2.3 repairs those native
+timer defaults; live multiplayer confirmation is still pending.
 
 A guest who deliberately uses Leave/Back and rejoins can lose Jokers found
 during the run, while players who remain keep theirs. The game's developer
@@ -72,20 +79,22 @@ work-in-progress feature in its
 [September 19 devlog](https://steamcommunity.com/app/3124540/announcements/).
 That statement does not establish whether voluntary Leave/Back should restore
 Jokers, or whether this mod affects that behavior. See the
-[read-only investigation notes](docs/ISSUE_DIAGNOSTICS.md). These issues are
-**not fixed in v1.2.2 or v1.2.3**. Local v1.2.4 implements two adapters described
-in [gameplay fix details](docs/GAMEPLAY_FIXES.md): repair the missile's missing
+[historical investigation notes](docs/ISSUE_DIAGNOSTICS.md). v1.2.2 and the
+earlier v1.2.3 legacy-runtime package do not contain the adapters. Official
+v1.2.3 implements two adapters described in
+[gameplay fix details](docs/GAMEPLAY_FIXES.md): repair the missile's missing
 5+ initialization defaults, and shadow the native Joker backup for same-map
 reconnects. The adapters still require a controlled in-game multiplayer test.
 Game
 `0.3.0.0` moved matchmaking to Epic Online Services, so the old Steam
 creation/kick hooks no longer register. A prior single-host run showed seven
-Invite buttons but did not test a fifth client. Do not publish this preview as a
-verified gameplay fix. [Official October update notes](https://steamcommunity.com/app/3124540/allnews)
+Invite buttons but did not test a fifth client. The official release label is
+not evidence of verified gameplay or vanilla-client compatibility.
+[Official October update notes](https://steamcommunity.com/app/3124540/allnews)
 also describe new built-in Joker reconnection saving and changed missile
 progression; older assumptions require retesting.
 
-**Do not describe the local v1.2.4 test as verified eight-player support.**
+**Do not describe v1.2.3 as verified eight-player support.**
 The old capacity and Invite code is active, but a two-player smoke test and
 seven visible Invite buttons do not prove that guests 5–8 can join through EOS.
 
@@ -99,7 +108,7 @@ in the EXE, so it does not download another multiplayer mod.
 For the current host-only experiment, install this build on the **host only**.
 Guests must use the same game version but must not install UE4SS or this mod;
 otherwise the test cannot prove vanilla-client compatibility. This is a
-prerelease claim, not a guarantee that missions remain synchronized at 5–8
+deployment experiment, not a guarantee that missions remain synchronized at 5–8
 players.
 
 The installer validates the supported game build and all embedded hashes,
@@ -188,8 +197,8 @@ common command-not-found and TLS errors, and matching verify/restore commands.
 
 ## What the mod changes
 
-`src/Mods/FFWFrostburn8/Scripts/main.lua` independently applies the capacity at
-the four host-side layers used by the current game:
+`src/Mods/FFWFrostburn8/Scripts/main.lua` retains the independent capacity code
+for four host-side targets, when the corresponding reflected APIs are present:
 
 1. server-side `AGameSession.MaxPlayers`;
 2. `BP_Manager_Multiplayer_C.MaxPlayers` before a room is created;
@@ -197,6 +206,11 @@ the four host-side layers used by the current game:
    Unreal metadata;
 4. SteamCorePro lobby `MaxMembers`, discovered by its exact reflected field
    name instead of guessing an integer argument.
+
+The current game uses EOS matchmaking. The old Steam targets are retained for
+compatibility, but their presence in the source does not prove that they run
+on the current game. A real five-plus-player session is needed to validate the
+current matchmaking path.
 
 The experimental join guard suppresses only an empty-reason automatic kick
 from the known lobby/player-state validation path while an **Allow Mods** room
@@ -316,11 +330,11 @@ the fifth player has joined and **Current Session** has been opened:
 pwsh.exe -NoLogo -NoProfile -File .\tools\Test-RuntimeLog.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest" `
   -RequireCurrentSession `
-  -RequireHostOnlyHooks `
-  -RequireHostOnlyJoin `
   -RequireFivePlayerUi
 ```
 
+The older `-RequireHostOnlyHooks` and `-RequireHostOnlyJoin` options expect the
+Steam-specific hooks and cannot establish current EOS compatibility.
 The host log cannot inspect guest disks, so it deliberately reports
 `vanillaClientInstallationStateProven: false`. Confirm separately that every
 guest has no `dwmapi.dll`/UE4SS installation. Test clients 2–4 first, then the

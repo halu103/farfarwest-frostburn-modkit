@@ -73,6 +73,20 @@ $checks = @(
     }
 )
 
+if ($mod.releaseChannel -eq "stable" -and
+    $mod.PSObject.Properties.Name -contains "gameplayFixes") {
+    # The historical legacy package used the same numeric version. A version
+    # prefix alone must not certify that the official gameplay-fix build ran.
+    $checks += [pscustomobject]@{
+        name = "Official release channel"
+        pattern = "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*ReleaseChannel=stable"
+    }
+    $checks += [pscustomobject]@{
+        name = "Gameplay-fix build markers"
+        pattern = "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*GameplayFixes=CL2852.*missile-five-plus-timing=true.*joker-native-backup-shadow=true"
+    }
+}
+
 $results = @($checks | ForEach-Object {
     [pscustomobject]@{
         name = $_.name

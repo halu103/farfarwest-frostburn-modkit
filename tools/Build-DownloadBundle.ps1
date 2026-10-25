@@ -194,7 +194,7 @@ Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination (Join-Pat
 Copy-Item `
     -LiteralPath (Join-Path $projectRoot "THIRD_PARTY_NOTICES.md") `
     -Destination (Join-Path $stageRoot "THIRD-PARTY-NOTICES.txt")
-if ($mod.releaseChannel -eq "gameplay-fix-preview") {
+if ($mod.PSObject.Properties.Name -contains "gameplayFixes") {
     Copy-Item -LiteralPath (Join-Path $projectRoot "docs\GAMEPLAY_FIXES.md") `
         -Destination (Join-Path $stageRoot "GAMEPLAY-FIXES.txt")
 }
@@ -210,8 +210,8 @@ $(
         "EOS COMPATIBILITY PREVIEW / BAN THU NGHIEM EOS: DIAGNOSTICS ONLY.`nEight-player capacity, extra Invite rows and the old join guard are disabled in this preview.`nThe new game uses Epic Online Services; vanilla clients 5-8 are not verified. TNT missile and Joker issues are not fixed.`nDo not publish this as a working 8-player mod.`n"
     } elseif ($mod.releaseChannel -eq "legacy-runtime-preview") {
         "EOS LEGACY RUNTIME TEST / BAN THU NGHIEM: earlier capacity and Invite logic is ACTIVE.`nOne guest joining confirms only a two-player smoke test; it does not prove players 5-8 can join, or that vanilla guests work with a modded host.`nThe new game uses Epic Online Services. Old Steam room/join hooks did not register in an earlier solo run. TNT missile and Joker issues are NOT fixed.`nDo not publish this as verified eight-player support.`n"
-    } elseif ($mod.releaseChannel -eq "gameplay-fix-preview") {
-        "GAMEPLAY FIX TEST / BAN THU NGHIEM SUA LOI: earlier capacity and Invite logic remains active.`nRepairs missing five-plus-player missile initialization to the four-player TNT/time settings and retains same-map Joker backups for reconnecting guests.`nThe game's own four-lever success and replicated Joker restore paths are used. Cache resets when the map ends.`nOffline tests passed; real multiplayer verification is pending. Eight-player and vanilla-guest support remain unverified.`n"
+    } elseif ($mod.releaseChannel -eq "gameplay-fix-preview" -or $mod.releaseChannel -eq "stable") {
+        "$(if ($mod.releaseChannel -eq 'stable') { 'OFFICIAL RELEASE / BAN PHAT HANH CHINH THUC' } else { 'GAMEPLAY FIX TEST / BAN THU NGHIEM SUA LOI' }): earlier capacity and Invite logic remains active.`nRepairs missing five-plus-player missile initialization to the four-player TNT/time settings and retains same-map Joker backups for reconnecting guests.`nThe game's own four-lever success and replicated Joker restore paths are used. Cache resets when the map ends.`nOffline tests passed; real multiplayer verification is pending. Eight-player and vanilla-guest support remain unverified.`n"
     }
 )
 
@@ -262,7 +262,7 @@ LUU Y / IMPORTANT
 - A successful install does not by itself prove eight real network clients.
   The game now uses EOS matchmaking. Before claiming support, test a fifth
   vanilla-player join, then all eight, map travel, objective, reconnect and kick.
-- For v1.2.4, compare Joker cards/effects before Leave/Back and after rejoining
+- For v$($mod.version), compare Joker cards/effects before Leave/Back and after rejoining
   the SAME map. Complete the map and confirm old cards do not return in a new run.
   Test the TNT missile with 5+ players without asking a guest to leave.
 - Day la ban thu nghiem. Khong coi 7 nut Invite la bang chung client vanilla vao duoc.

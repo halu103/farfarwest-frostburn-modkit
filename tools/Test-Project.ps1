@@ -199,11 +199,18 @@ if ($sourceMod -and (Test-Path -LiteralPath $sourceMod -PathType Container)) {
             -Message "Lua MOD_VERSION does not match src/mod.json."
         Assert-ProjectCheck -Condition ($mainLua -match $maxPattern) `
             -Message "Lua TARGET_MAX_PLAYERS does not match src/mod.json."
-        if ($mod.releaseChannel -eq "legacy-runtime-preview") {
+        if ($mod.releaseChannel -in @("stable", "legacy-runtime-preview", "gameplay-fix-preview")) {
             Assert-ProjectCheck -Condition ($mainLua -match '(?m)^local DIAGNOSTICS_ONLY\s*=\s*false\s*$' -and
                 $mainLua -match 'legacyCapacityWrites=true' -and
                 $mainLua -match 'runtimeSessionUi=true') `
-                -Message "The legacy-runtime preview must preserve active capacity and Invite-row logic."
+                -Message "Gameplay releases must preserve active capacity and Invite-row logic."
+        }
+        if ($mod.PSObject.Properties.Name -contains "gameplayFixes") {
+            Assert-ProjectCheck -Condition ($mainLua -match 'startGameplayModule\("MissileFix"' -and
+                $mainLua -match 'startGameplayModule\("JokerFix"') `
+                -Message "Gameplay-fix metadata requires both runtime adapters to be loaded."
+            Assert-ProjectCheck -Condition (-not [bool]$mod.gameplayFixes.multiplayerRuntimeVerified) `
+                -Message "Multiplayer verification must not be claimed without an in-game test report."
         }
         Assert-ProjectCheck -Condition ($mainLua -match 'UI_Menu_Container_CurrentSession' -and $mainLua -match 'VerticalBox_Players') `
             -Message "Owned Lua source is missing the current-session UI expansion."

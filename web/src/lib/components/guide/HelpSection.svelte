@@ -8,6 +8,7 @@
 	import type { Release } from './types.js';
 
 	let { latest }: { latest?: Release } = $props();
+	let downloadUrl = $derived(latest?.installerUrl ?? latest?.zipUrl);
 	let faqs = $derived([
 		{ value: 'smartscreen', question: m.faq_smartscreen_q(), answer: m.faq_smartscreen_a() },
 		{ value: 'game-path', question: m.faq_game_path_q(), answer: m.faq_game_path_a() },
@@ -66,9 +67,9 @@
 				</p>
 				<h2 class="mt-2 text-3xl font-black tracking-tight sm:text-4xl">{m.quick_title()}</h2>
 			</div>
-			{#if latest?.zipUrl}
+			{#if latest && downloadUrl}
 				<Button
-					href={latest.zipUrl}
+					href={downloadUrl}
 					size="lg"
 					class="h-12 rounded-md bg-[#100d0a] px-6 text-base font-black text-[#fff8e8] hover:bg-[#2a2018]"
 				>

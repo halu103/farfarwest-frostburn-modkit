@@ -1,6 +1,6 @@
 # Updating after a Far Far West patch
 
-The local v1.2.4 build for game 0.3.0.7 preserves the previous backend capacity
+The official v1.2.3 build for game 0.3.0.7 preserves the previous backend capacity
 and Invite-row logic and adds missile/Joker fixes. Live multiplayer validation
 is pending. Read [the current contracts and checks](GAMEPLAY_FIXES.md) before
 changing the pinned game build; static signatures and one guest joining cannot
@@ -149,7 +149,10 @@ pwsh.exe -NoLogo -NoProfile -File .\tools\Build-DownloadBundle.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
-Upload the four files under `dist\release-vVERSION` as GitHub Release assets.
+Upload the six generated distribution files (Setup, Uninstall, player ZIP and
+their three SHA-256 sidecars) as GitHub Release assets. Use a fresh explicit
+output directory when preserving historical builds; the current official
+v1.2.3 and earlier v1.2.3 `LEGACY-TEST` package are distinct artifacts.
 Do not tell players to use **Code → Download ZIP**; that archive is source only.
 See [publishing a release](PUBLISHING.md).
 
@@ -179,14 +182,15 @@ The installer takes a dated backup and refuses to write if the game is running.
 Launch the game normally, create a room with **Allow mods** enabled, open
 **Current Session**, then run the matching verification command.
 
-For the v1.2.2 host-only experiment, install the mod only on the host. Every
+For the current host-only experiment, install the mod only on the host. Every
 guest must use the same game build with no `dwmapi.dll`/UE4SS mod installation.
 First verify the solo `1 member + 7 Invite` tuple with
 `-RequireSoloInviteUi`. Then have a fifth real player join and use
-`-RequireHostOnlyHooks -RequireHostOnlyJoin -RequireFivePlayerUi`. A passing
-five-player report must show the Steam lobby write, selective join-kick block,
-at least five observed players, and the exact visible `5 members + 3 Invite`
-tuple. Also create a separate room without **Allow mods** and confirm that
+`-RequireFivePlayerUi`. Confirm at least five observed players and the exact
+visible `5 members + 3 Invite` tuple. The older
+`-RequireHostOnlyHooks -RequireHostOnlyJoin` checks expect the Steam path and
+are not proof of compatibility with the current EOS matchmaking path. Also
+create a separate room without **Allow mods** and confirm that
 Current Session keeps the normal four-row layout.
 
 Windows PowerShell 5.1:
@@ -208,10 +212,10 @@ pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-RuntimeLo
 ```
 
 Core startup can be automated, but multiplayer capacity cannot be honestly
-proven with one client. Use this live matrix before removing the experimental
-label:
+proven with one client. Use this live matrix before claiming verified host-only
+compatibility, regardless of the release-channel label:
 
-1. Host only has v1.2.2; all guests are verified vanilla.
+1. Host only has official v1.2.3; all guests are verified vanilla.
 2. Clients 2–4 join normally.
 3. Client 5 joins once by session code and once by the game's current invite flow.
 4. Clients 6–8 join and all eight names appear.

@@ -2,7 +2,6 @@
 	import {
 		ArrowRight01Icon,
 		Download04Icon,
-		FileZipIcon,
 		FolderOpenIcon,
 		GameController02Icon,
 		InstallingUpdates01Icon
@@ -14,6 +13,7 @@
 	import type { Release } from './types.js';
 
 	let { latest }: { latest?: Release } = $props();
+	let downloadUrl = $derived(latest?.installerUrl ?? latest?.zipUrl);
 	let installSteps = $derived([
 		{
 			number: '01',
@@ -85,10 +85,10 @@
 		{/each}
 	</div>
 
-	{#if latest?.zipUrl}
+	{#if downloadUrl}
 		<div class="mt-8 flex justify-center">
-			<Button href={latest.zipUrl} size="lg" class="h-12 rounded-md px-6 text-base font-black">
-				<HugeiconsIcon icon={FileZipIcon} strokeWidth={2.2} data-icon="inline-start" />
+			<Button href={downloadUrl} size="lg" class="h-12 rounded-md px-6 text-base font-black">
+				<HugeiconsIcon icon={Download04Icon} strokeWidth={2.2} data-icon="inline-start" />
 				{m.download_latest()}
 			</Button>
 		</div>

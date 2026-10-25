@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "FFWFrostburn8",
-  "name": "Far Far West 8 Players - Missile and Joker Fix Preview",
-  "version": "1.2.4",
-  "releaseChannel": "gameplay-fix-preview",
+  "name": "Far Far West 8 Players - Missile and Joker Fixes",
+  "version": "1.2.3",
+  "releaseChannel": "stable",
   "license": "MIT",
   "maxPlayers": 8,
   "sessionRows": 8,

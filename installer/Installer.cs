@@ -122,10 +122,12 @@ namespace FFWFrostburn8Installer
             bool compatibilityPreview = BuildInfo.ReleaseChannel == "compatibility-preview";
             bool legacyRuntimePreview = BuildInfo.ReleaseChannel == "legacy-runtime-preview";
             bool gameplayPreview = BuildInfo.ReleaseChannel == "gameplay-fix-preview";
+            bool officialRelease = BuildInfo.ReleaseChannel == "stable";
             Text = "FFWFrostburn8 v" + BuildInfo.ModVersion +
                 (compatibilityPreview ? " - EOS Diagnostics Preview" :
                  legacyRuntimePreview ? " - EOS Legacy Runtime Test" :
-                 gameplayPreview ? " - Missile and Joker Fix Preview" : " - Host-Only Experimental");
+                 gameplayPreview ? " - Missile and Joker Fix Preview" :
+                 officialRelease ? " - Official Release" : " - Host-Only Experimental");
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(760, 565);
             MinimumSize = new Size(720, 540);
@@ -141,6 +143,7 @@ namespace FFWFrostburn8Installer
                 ? "Far Far West - EOS Compatibility Preview"
                 : legacyRuntimePreview
                     ? "Far Far West - 8 Players EOS Test"
+                    : officialRelease ? "Far Far West - 8 Players"
                     : "Far Far West - 8 Players Host-Only Test";
             Controls.Add(title);
 
@@ -151,7 +154,8 @@ namespace FFWFrostburn8Installer
             version.Text = "Mod v" + BuildInfo.ModVersion + "  |  Game " + BuildInfo.GameVersion +
                 "  |  " + (compatibilityPreview ? "Diagnostics only" :
                     legacyRuntimePreview ? "Legacy runtime, unverified on EOS" :
-                    gameplayPreview ? "Gameplay fixes - runtime test pending" : "Experimental offline package");
+                    gameplayPreview ? "Gameplay fixes - runtime test pending" :
+                    officialRelease ? "Official release - multiplayer verification pending" : "Experimental offline package");
             Controls.Add(version);
 
             var warning = new Label();
@@ -161,7 +165,7 @@ namespace FFWFrostburn8Installer
             warning.Location = new Point(24, 88);
             warning.Size = new Size(712, 72);
             warning.Padding = new Padding(10, 8, 10, 8);
-            warning.Text = gameplayPreview
+            warning.Text = gameplayPreview || officialRelease
                 ? "HOST ONLY / CHỈ HOST: missile timing and same-map Joker reconnect fixes are active. " +
                   "Multiplayer testing is pending. Close Far Far West first. UE4SS files are backed up " +
                   "and replaced. The installer never starts, closes, or restarts the game."
@@ -321,8 +325,8 @@ namespace FFWFrostburn8Installer
                 return;
             }
 
-            string previewWarning = BuildInfo.ReleaseChannel == "gameplay-fix-preview"
-                ? "GAMEPLAY FIX PREVIEW: repairs five-plus-player missile timing and retains Joker backups " +
+            string previewWarning = BuildInfo.ReleaseChannel == "gameplay-fix-preview" || BuildInfo.ReleaseChannel == "stable"
+                ? "GAMEPLAY FIXES: repairs five-plus-player missile timing and retains Joker backups " +
                   "for reconnecting guests in the same map. The cache resets when the map ends. " +
                   "Offline tests passed; multiplayer testing is pending. " + Environment.NewLine + Environment.NewLine
                 : BuildInfo.ReleaseChannel == "compatibility-preview"

@@ -1,8 +1,11 @@
-# v1.2.4 missile and Joker fixes (game 0.3.0.7 / CL2852)
+# Official v1.2.3 missile and Joker fixes (game 0.3.0.7 / CL2852)
 
-This build retains the v1.2.3 capacity and Session UI behavior and adds two
+This build retains the earlier legacy-runtime capacity and Session UI behavior and adds two
 host-side adapters. The Lua policies and mocked UE4SS contracts are tested
-offline. A real multiplayer run has not been performed for this build.
+offline. A real multiplayer run has not been performed for this build. The
+official version/stable packaging label does not imply verified multiplayer
+behavior or vanilla-client compatibility. The historical v1.2.3
+`LEGACY-TEST` package does not contain these adapters.
 
 ## TNT missile with five to eight players
 
@@ -78,7 +81,8 @@ load TNT and activate the four levers without removing a guest from the room.
 Confirm all clients see the normal countdown, one launch and normal rewards.
 
 Host log: `<game>\FarFarWest\Binaries\Win64\ue4ss\UE4SS.log`.
-Look for `MissileFix registered`, `MissileFix ...timeSeconds=0->4`,
+Look for the startup markers `ReleaseChannel=stable` and `GameplayFixes=`,
+then `MissileFix registered`, `MissileFix ...timeSeconds=0->4`,
 `JokerFix hook-ready`, `JokerFix cache-reset` and, when the fallback is needed,
 `JokerFix native-backup-supplied cards=N`. A successful native restore can keep
 the fallback count at zero. `FFW8_Status` prints module status and counters.

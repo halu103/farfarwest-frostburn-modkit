@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.2.4 - missile and same-map Joker fix preview (unreleased)
+## 1.2.3 - official release — 2026-10-25
+
+- Use the requested official v1.2.3 version and standalone EXE packaging. This
+  supersedes the local v1.2.4 preview designation; it does not certify live
+  multiplayer or change the host-only compatibility caveat.
 
 - Retain the previous eight-player capacity and Session UI logic for game
   `0.3.0.7 - CL 2852`.
@@ -19,11 +23,22 @@
   Joker removals. Verify writes and attempt rollback on partial failure.
 - Add offline policy and UE4SS-contract tests plus CI execution. These checks
   do not prove live replication, mission rewards, 5–8 players or vanilla guests.
-- Build as a separate gameplay test package. No game launch or live install is
-  performed by the build. See `docs/GAMEPLAY_FIXES.md` for evidence, limitations
+- Release standalone Setup, Uninstall and their checksum files, as in previous
+  versions. No player ZIP bundle is required.
+  No game launch or live install is performed by the build. See
+  `docs/GAMEPLAY_FIXES.md` for evidence, limitations
   and a controlled multiplayer verification checklist.
+- Fix website release discovery for long, game-version-qualified filenames,
+  including legacy releases with no ZIP. Shorten stale caching and provide a
+  GitHub Releases fallback when the API is unavailable.
 
-## 1.2.3 - game 0.3.0.7 legacy-runtime test (unreleased)
+### Earlier v1.2.3 legacy-runtime test (historical package)
+
+This earlier package used the same numeric version but the
+`legacy-runtime-preview` channel and `LEGACY-TEST` asset suffix. It is not the
+official package above and does not contain the missile/Joker adapters. Retain
+its existing tag/assets when publishing the official build so checksums and
+download history remain distinguishable.
 
 - Pin the installer to the installed Far Far West `0.3.0.7 - CL 2852`
   executable and its SHA-256; continue to refuse other builds rather than

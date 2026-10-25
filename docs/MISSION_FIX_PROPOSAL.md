@@ -2,7 +2,7 @@
 
 Historical September hypothesis, superseded for game 0.3.0.7 CL2852: full
 bytecode decoding found an existing four-lever success threshold and missing
-5+ initialization cases yielding a zero-second timer. v1.2.4 repairs the
+5+ initialization cases yielding a zero-second timer. Official v1.2.3 repairs the
 verified initialization/timer nodes and does not force ignition. See
 [the current implementation](GAMEPLAY_FIXES.md).
 

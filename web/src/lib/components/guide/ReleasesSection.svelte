@@ -64,6 +64,20 @@
 	</div>
 
 	<div class="mt-10 grid gap-5">
+		{#if releases.length === 0}
+			<div class="rounded-xl border border-border bg-card p-6">
+				<p class="mb-4 text-muted-foreground">{m.release_fallback()}</p>
+				<Button
+					href="https://github.com/halu103/farfarwest-frostburn-modkit/releases"
+					target="_blank"
+					rel="noreferrer"
+					variant="outline"
+				>
+					GitHub Releases
+					<HugeiconsIcon icon={ExternalLinkIcon} strokeWidth={2} data-icon="inline-end" />
+				</Button>
+			</div>
+		{/if}
 		{#each releases as release, index (release.tag)}
 			<Card.Root
 				class={index === 0
@@ -137,6 +151,19 @@
 							{m.release_installer()}
 							{#if release.installerSize}<span class="opacity-65"
 									>· {formatSize(release.installerSize)}</span
+								>{/if}
+						</Button>
+					{/if}
+					{#if release.uninstallerUrl}
+						<Button
+							href={release.uninstallerUrl}
+							variant="outline"
+							class="rounded-md border-border bg-background/30 font-bold"
+						>
+							<HugeiconsIcon icon={WindowsNewIcon} strokeWidth={2} data-icon="inline-start" />
+							{m.release_uninstaller()}
+							{#if release.uninstallerSize}<span class="opacity-65"
+									>· {formatSize(release.uninstallerSize)}</span
 								>{/if}
 						</Button>
 					{/if}

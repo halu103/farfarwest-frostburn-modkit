@@ -27,3 +27,39 @@ jobs:
       - name: Test gameplay policies and UE4SS adapters with mocks
         shell: pwsh
         run: ./tools/Test-GameplayFixes.ps1
+
+  validate-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      PUBLIC_REPOSITORY_URL: https://github.com/halu103/farfarwest-frostburn-modkit
+      PUBLIC_BUYME_URL: https://www.buymeacoffee.com/halu103
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.23.0'
+
+      - name: Set up Node.js for website checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install website dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test GitHub release discovery
+        run: pnpm test
+
+      - name: Check website types
+        run: pnpm check
+
+      - name: Build website
+        run: pnpm build

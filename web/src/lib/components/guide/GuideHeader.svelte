@@ -20,6 +20,7 @@
 	import { PUBLIC_BUYME_URL } from '$env/static/public';
 
 	let { latest, starCount }: { latest?: Release; starCount: number | null } = $props();
+	let downloadUrl = $derived(latest?.installerUrl ?? latest?.zipUrl);
 	const supportUrl = PUBLIC_BUYME_URL || 'https://www.buymeacoffee.com/halu103';
 
 	const languages = [
@@ -117,9 +118,9 @@
 			</Select.Root>
 		</div>
 
-		{#if latest?.zipUrl}
+		{#if downloadUrl}
 			<Button
-				href={latest.zipUrl}
+				href={downloadUrl}
 				size="sm"
 				class="hidden rounded-md bg-primary font-extrabold text-primary-foreground shadow-[0_0_24px_rgba(244,182,63,0.18)] hover:bg-[#ffd75a] md:inline-flex"
 			>

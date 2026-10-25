@@ -5,10 +5,10 @@ It is a native Windows GUI application: it does not invoke PowerShell and does
 not download another multiplayer mod. The complete verified release ZIP is
 embedded in the executable.
 
-For players, publish `FFWFrostburn8-Windows-x64.zip` as a GitHub Release asset.
-That download has a flat layout, so `FFWFrostburn8-Setup.exe` and
-`FFWFrostburn8-Uninstall.exe` are visible immediately after extraction. Do not
-direct players to GitHub's automatically generated source archive. See
+For players, publish the standalone files ending in `Setup.exe` and
+`Uninstall.exe`, with their `.sha256.txt` checksums, as GitHub Release assets.
+Players can run either EXE directly; no ZIP bundle or extraction is required.
+Do not direct players to GitHub's automatically generated source archive. See
 [publishing](PUBLISHING.md).
 
 ## Install without PowerShell
@@ -20,7 +20,8 @@ direct players to GitHub's automatically generated source archive. See
 4. Click **Install / Cài** and confirm.
 5. Start the game normally, create a room, and tick **Allow mods**.
 
-Version 1.2.2 is a **host-only experimental** build. Install it on the host
+Official v1.2.3 targets game `0.3.0.7 - CL 2852`. Its distribution channel is
+stable, but host-only vanilla-client compatibility remains unverified. Install it on the host
 only; test guests must use the same game version with no UE4SS/mod installation.
 It captures the room's **Allow mods** choice during room creation so a temporary
 widget-visibility race cannot collapse the interface to the vanilla three
@@ -98,9 +99,10 @@ players must join to claim a complete eight-player test.
 
 For a valid host-only test, verify that every guest has neither `dwmapi.dll`
 nor a `ue4ss` folder in the game's `Binaries\Win64` directory. Join clients
-2–4, then the fifth through both session code and Steam Invite, then clients
+2–4, then the fifth through both session code and the current invite flow, then clients
 6–8. Also test map travel, an objective, reconnect, and a manual host kick.
-Keep the release labelled experimental until all of those checks pass.
+Keep host-only support labelled unverified until all of those checks pass;
+the official version label does not replace the runtime test.
 
 ## Build the installer from source
 

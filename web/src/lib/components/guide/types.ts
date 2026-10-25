@@ -9,6 +9,8 @@ export type Release = {
 	zipSize: number | null;
 	installerUrl: string | null;
 	installerSize: number | null;
+	uninstallerUrl: string | null;
+	uninstallerSize: number | null;
 	checksumUrl: string | null;
 	downloadCount: number | null;
 };

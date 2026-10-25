@@ -17,6 +17,7 @@
 	import type { Release } from './types.js';
 
 	let { latest }: { latest?: Release } = $props();
+	let downloadUrl = $derived(latest?.installerUrl ?? latest?.zipUrl);
 
 	let activeLocale = $derived(getLocaleForUrl(page.url));
 	let isCjk = $derived(activeLocale === 'zh' || activeLocale === 'jp' || activeLocale === 'kr');
@@ -86,9 +87,9 @@
 			{/if}
 
 			<div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-				{#if latest?.zipUrl}
+				{#if latest && downloadUrl}
 					<Button
-						href={latest.zipUrl}
+						href={downloadUrl}
 						size="lg"
 						class="h-auto min-h-12 rounded-md bg-primary px-5 py-3 text-center
 							text-base font-black whitespace-normal text-primary-foreground
@@ -108,9 +109,9 @@
 					</Button>
 				{/if}
 
-				{#if latest?.installerUrl}
+				{#if latest?.installerUrl && latest.zipUrl}
 					<Button
-						href={latest.installerUrl}
+						href={latest.zipUrl}
 						variant="outline"
 						size="lg"
 						class="h-auto min-h-12 rounded-md border-border bg-card/65 px-5
@@ -124,7 +125,7 @@
 							class="shrink-0"
 						/>
 
-						<span>{m.hero_direct_exe()}</span>
+						<span>{m.release_bundle()}</span>
 					</Button>
 				{/if}
 

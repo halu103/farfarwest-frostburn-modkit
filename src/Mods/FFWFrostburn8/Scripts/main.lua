@@ -4,12 +4,12 @@
 -- or code from another multiplayer mod.
 
 local MOD_ID = "FFWFrostburn8"
-local MOD_VERSION = "1.2.4"
+local MOD_VERSION = "1.2.3"
 local TARGET_MAX_PLAYERS = 8
 local VANILLA_MAX_PLAYERS = 4
 local TARGET_SESSION_ROWS = TARGET_MAX_PLAYERS
 local HOST_ONLY_EXPERIMENTAL = true
--- Keep the earlier runtime capacity and UI behavior for this opt-in test build.
+-- Keep the earlier runtime capacity and UI behavior in this release.
 -- A working two-player room does not prove EOS accepts players five to eight.
 local DIAGNOSTICS_ONLY = false
 local TAG = string.format("[%s v%s]", MOD_ID, MOD_VERSION)
@@ -1962,10 +1962,10 @@ log(string.format("Mod loaded - v%s", MOD_VERSION))
 log(string.format("Target MaxPlayers=%d", TARGET_MAX_PLAYERS))
 log(string.format("Target SessionRows=%d InviteSlotsWhenSolo=%d", TARGET_SESSION_ROWS, TARGET_SESSION_ROWS - 1))
 log("HostOnlyMode=EXPERIMENTAL vanillaClients=UNVERIFIED allowModsRequired=true manualKickPreserved=true")
-log("LegacyRuntimePreview=EOS game-0.3.0.7 old-capacity-and-UI-logic-active five-to-eight-players-unverified")
-log("LegacyRuntimePreviewSafety=allow-mods-required old-Steam-room-and-join-hooks-unverified no-proof-from-one-guest")
+log("ReleaseChannel=stable game-0.3.0.7-CL2852 legacy-capacity-and-UI-logic-active five-to-eight-players-unverified")
+log("RuntimeSafety=allow-mods-required old-Steam-room-and-join-hooks-unverified no-proof-from-one-guest")
 log("Implementation=source-owned-lua runtimeSessionUi=true legacyCapacityWrites=true eosCapacityUnverified=true selectiveJoinKickGuard=unverified cookedAssets=false")
-log("GameplayFixPreview=CL2852 missile-five-plus-timing=true joker-native-backup-shadow=true map-scoped=true multiplayer-runtime-unverified")
+log("GameplayFixes=CL2852 missile-five-plus-timing=true joker-native-backup-shadow=true map-scoped=true multiplayer-runtime-unverified")
 
 ensureGameplayFixes()
 registerObjectNotifications()
