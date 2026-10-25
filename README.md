@@ -2,11 +2,11 @@
 
 An independent, source-owned UE4SS mod and maintenance kit for raising Far Far
 West's multiplayer capacity to eight players after the Frostburn/Unreal Engine
-5.8 update. The latest public version is 1.2.2. The local 1.2.3 source is an
-unreleased legacy-runtime test for game `0.3.0.7 - CL 2852`. It preserves the
-earlier capacity and Invite behavior but is not a verified eight-player or
-gameplay-fix release. An installer refusing a new version does not, by itself,
-prove that the already-installed mod stopped working.
+5.8 update. The local v1.2.4 source targets game `0.3.0.7 - CL 2852`, retains
+the earlier capacity/Invite behavior, and adds missile timing and same-map Joker
+reconnect fixes. Offline tests pass; live multiplayer validation is pending.
+An installer refusing a new version does not, by itself, prove that the
+already-installed mod stopped working.
 
 The repository contains the complete Lua source for `FFWFrostburn8`. It does
 not download, copy, or package another player's-capacity mod, and it does not
@@ -18,9 +18,9 @@ contain cooked game assets.
 
 [Download FFWFrostburn8 for Windows x64](https://github.com/halu103/farfarwest-frostburn-modkit/releases/latest/download/FFWFrostburn8-Windows-x64.zip)
 
-**The currently published v1.2.2 installer targets the old game
-`0.2.0.20 - CL 915` and correctly refuses the new game.** Do not force it or
-assume this link serves the unreleased 1.2.3 legacy-runtime test.
+**Check the downloaded filename and supported game version.** Older v1.2.2
+installers target `0.2.0.20 - CL 915` and refuse the new game. Local v1.2.4
+gameplay test packages are not automatically published to the link above.
 
 Extract that ZIP and run `FFWFrostburn8-Setup.exe`, which is immediately at the
 archive root. The same folder contains `FFWFrostburn8-Uninstall.exe` for safe,
@@ -45,11 +45,10 @@ to the first GitHub Release; see [publishing a release](docs/PUBLISHING.md).
 
 Current baseline:
 
-- Far Far West: local preview targets `0.3.0.7 - CL 2852`; public v1.2.2
-  targets `0.2.0.20 - CL 915`
+- Far Far West: `0.3.0.7 - CL 2852`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- Owned mod: public `v1.2.2`; local legacy-runtime test `v1.2.3` (MIT,
+- Owned mod: local gameplay fix preview `v1.2.4` (MIT,
   host-only experimental)
 - Target capacity: `8` (old runtime logic retained; EOS multiplayer unverified)
 - Session UI target: `1 host + 7 invite slots` (old runtime logic retained)
@@ -74,15 +73,19 @@ work-in-progress feature in its
 That statement does not establish whether voluntary Leave/Back should restore
 Jokers, or whether this mod affects that behavior. See the
 [read-only investigation notes](docs/ISSUE_DIAGNOSTICS.md). These issues are
-**not fixed in v1.2.2 or the local v1.2.3 legacy-runtime test**. Game
+**not fixed in v1.2.2 or v1.2.3**. Local v1.2.4 implements two adapters described
+in [gameplay fix details](docs/GAMEPLAY_FIXES.md): repair the missile's missing
+5+ initialization defaults, and shadow the native Joker backup for same-map
+reconnects. The adapters still require a controlled in-game multiplayer test.
+Game
 `0.3.0.0` moved matchmaking to Epic Online Services, so the old Steam
 creation/kick hooks no longer register. A prior single-host run showed seven
-Invite buttons but did not test a fifth client. Do not publish v1.2.3 as a
+Invite buttons but did not test a fifth client. Do not publish this preview as a
 verified gameplay fix. [Official October update notes](https://steamcommunity.com/app/3124540/allnews)
 also describe new built-in Joker reconnection saving and changed missile
 progression; older assumptions require retesting.
 
-**Do not describe the local v1.2.3 test as verified eight-player support.**
+**Do not describe the local v1.2.4 test as verified eight-player support.**
 The old capacity and Invite code is active, but a two-player smoke test and
 seven visible Invite buttons do not prove that guests 5–8 can join through EOS.
 
@@ -93,7 +96,7 @@ double-click the release file ending in `Setup.exe`, verify the automatically
 detected game folder, and click **Install / Cài**. The full package is embedded
 in the EXE, so it does not download another multiplayer mod.
 
-For the v1.2.2 host-only experiment, install this build on the **host only**.
+For the current host-only experiment, install this build on the **host only**.
 Guests must use the same game version but must not install UE4SS or this mod;
 otherwise the test cannot prove vanilla-client compatibility. This is a
 prerelease claim, not a guarantee that missions remain synchronized at 5–8

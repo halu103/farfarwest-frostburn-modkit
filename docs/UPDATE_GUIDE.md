@@ -1,9 +1,10 @@
 # Updating after a Far Far West patch
 
-The local v1.2.3 build for game 0.3.0.7 is an opt-in legacy-runtime test. It
-preserves the previous backend capacity and Invite-row logic; it is not a
-verified eight-player update. Do not publish it as a gameplay fix merely
-because static signatures, an installer build, or one guest joining pass.
+The local v1.2.4 build for game 0.3.0.7 preserves the previous backend capacity
+and Invite-row logic and adds missile/Joker fixes. Live multiplayer validation
+is pending. Read [the current contracts and checks](GAMEPLAY_FIXES.md) before
+changing the pinned game build; static signatures and one guest joining cannot
+validate the gameplay fixes or eight-player support.
 
 This project owns its multiplayer Lua source. Updating it never requires a
 download from a third-party mod page.

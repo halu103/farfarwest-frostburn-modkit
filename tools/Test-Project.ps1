@@ -46,6 +46,11 @@ $requiredFiles = @(
     "src\mod.json",
     "src\Mods\FFWFrostburn8\enabled.txt",
     "src\Mods\FFWFrostburn8\Scripts\main.lua",
+    "src\Mods\FFWFrostburn8\Scripts\MissileFix.lua",
+    "src\Mods\FFWFrostburn8\Scripts\JokerFix.lua",
+    "src\Mods\FFWFrostburn8\Scripts\RunState.lua",
+    "tools\Test-GameplayFixes.ps1",
+    "docs\GAMEPLAY_FIXES.md",
     "docs\UPDATE_GUIDE.md",
     "installer\Installer.cs",
     "installer\Uninstaller.cs",
@@ -105,8 +110,8 @@ Assert-ProjectCheck -Condition ($lock.schemaVersion -eq 2) -Message "Unsupported
 Assert-ProjectCheck -Condition ($mod.schemaVersion -eq 1) -Message "Unsupported mod metadata schema."
 Assert-ProjectCheck -Condition ($mod.id -eq "FFWFrostburn8") -Message "Unexpected owned mod id."
 Assert-ProjectCheck -Condition ($mod.version -match "^\d+\.\d+\.\d+$") -Message "Mod version must use semantic versioning."
-Assert-ProjectCheck -Condition ($mod.releaseChannel -in @("stable", "diagnostic-preview", "compatibility-preview", "legacy-runtime-preview")) `
-    -Message "Mod releaseChannel must explicitly be stable, diagnostic-preview, compatibility-preview, or legacy-runtime-preview."
+Assert-ProjectCheck -Condition ($mod.releaseChannel -in @("stable", "diagnostic-preview", "compatibility-preview", "legacy-runtime-preview", "gameplay-fix-preview")) `
+    -Message "Mod releaseChannel must identify a supported stable or preview channel."
 Assert-ProjectCheck -Condition ([int]$mod.maxPlayers -eq 8) -Message "Owned mod must target eight players."
 Assert-ProjectCheck -Condition ([int]$mod.sessionRows -eq 8) -Message "Session UI must target eight rows."
 Assert-ProjectCheck -Condition ([int]$mod.soloInviteSlots -eq 7) -Message "Solo host UI must target seven invite slots."

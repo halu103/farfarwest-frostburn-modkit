@@ -1,5 +1,11 @@
 # TNT missile objective: implementation boundary
 
+Historical September hypothesis, superseded for game 0.3.0.7 CL2852: full
+bytecode decoding found an existing four-lever success threshold and missing
+5+ initialization cases yielding a zero-second timer. v1.2.4 repairs the
+verified initialization/timer nodes and does not force ignition. See
+[the current implementation](GAMEPLAY_FIXES.md).
+
 Reported reproduction: in a five-player room, four people held all four TNT-missile levers and ignition did not start. After a guest left, four remaining players operated the same four levers and ignition started. The existing v1.2.2 game log establishes the five-to-four transition and that the TNT-missile level was loaded, but did not record lever state. This is a strong clue, **not a verified decompilation of the blocking condition**.
 
 The game's UE5.8 cooked `BP_TntMissileLauncher` package has reflected names `PlayerArray`, `CallFunc_Array_Length_ReturnValue`, `CallFunc_GreaterEqual_IntInt_ReturnValue`, `amountLeversEnabled`, `levers`, `leversEnabled`, `leverState`, `F_EnableLevers`, and `F_StartIgnition`. `F_StartIgnition` appears as a zero-parameter, `BlueprintCallable`/`BlueprintEvent` UFunction stub. The available asset conversion does not decode this package's event graph reliably: the main graph is raw and `F_EnableLevers` reports an impossible bytecode size. Thus neither the exact condition nor the correct transition action can be asserted from the asset names alone.

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "FFWFrostburn8",
-  "name": "Far Far West 8 Players - Legacy Runtime Test for EOS",
-  "version": "1.2.3",
-  "releaseChannel": "legacy-runtime-preview",
+  "name": "Far Far West 8 Players - Missile and Joker Fix Preview",
+  "version": "1.2.4",
+  "releaseChannel": "gameplay-fix-preview",
   "license": "MIT",
   "maxPlayers": 8,
   "sessionRows": 8,
@@ -14,5 +14,10 @@
   "vanillaClientCompatibility": "unverified",
   "packageMode": "source-owned-lua",
   "sourceDirectory": "Mods/FFWFrostburn8",
-  "cookedAssetsIncluded": false
+  "cookedAssetsIncluded": false,
+  "gameplayFixes": {
+    "tntMissile": "five-to-eight-player-initialization",
+    "jokerReconnect": "same-map-native-backup-shadow",
+    "multiplayerRuntimeVerified": false
+  }
 }

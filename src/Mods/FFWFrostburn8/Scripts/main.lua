@@ -4,7 +4,7 @@
 -- or code from another multiplayer mod.
 
 local MOD_ID = "FFWFrostburn8"
-local MOD_VERSION = "1.2.3"
+local MOD_VERSION = "1.2.4"
 local TARGET_MAX_PLAYERS = 8
 local VANILLA_MAX_PLAYERS = 4
 local TARGET_SESSION_ROWS = TARGET_MAX_PLAYERS
@@ -71,6 +71,9 @@ local missileTraceHooks = {}
 local missileTraceHookErrors = {}
 local MAX_DIAGNOSTIC_LINES = 40
 local MAX_ROSTER_LINES = 80
+local missileFix = nil
+local jokerFix = nil
+local currentGameplayState = nil
 
 local function log(message)
     print(string.format("%s %s\n", TAG, message))
@@ -205,6 +208,22 @@ local function getHostOnlyPlayerCount()
                 end
             end
         end
+    end
+    return nil
+end
+
+-- Gameplay fixes must use the actor's own world, not the first cached menu or
+-- previous-map GameState found in the global object list.
+local function getWorldPlayerCount(actor)
+    local ok, count = pcall(function()
+        local world = actor:GetWorld()
+        if not isValid(world) then return nil end
+        local gameState = world:GetPropertyValue("GameState")
+        if not isValid(gameState) then return nil end
+        return gameState:GetPropertyValue("PlayerArray"):GetArrayNum()
+    end)
+    if ok and type(count) == "number" and count % 1 == 0 and count >= 0 and count <= TARGET_MAX_PLAYERS then
+        return count
     end
     return nil
 end
@@ -1808,6 +1827,24 @@ local function printStatus(reason)
         hostOnlyJoinAllows,
         tostring(sessionUiConstructHookRegistered)
     ))
+    log(string.format(
+        "GameplayFixStatus reason=%s missileHookReady=%s missileNormalizations=%s missileTimeoutCorrections=%s jokerModuleLoaded=%s runtimeMultiplayerVerified=false",
+        reason,
+        tostring(missileFix ~= nil and missileFix.registered == true),
+        tostring(missileFix and missileFix.normalizations or 0),
+        tostring(missileFix and missileFix.timeoutCorrections or 0),
+        tostring(jokerFix ~= nil)
+    ))
+    if jokerFix and type(jokerFix.getStatus) == "function" then
+        local ok, state = pcall(jokerFix.getStatus)
+        if ok and type(state) == "table" then
+            log(string.format(
+                "JokerFixStatus active=%s lookupHookReady=%s captures=%s restores=%s resets=%s blocked=%s",
+                tostring(state.active), tostring(state.lookupHook), tostring(state.captures),
+                tostring(state.restores), tostring(state.resets), tostring(state.blocked)
+            ))
+        end
+    end
 end
 
 local function registerObjectNotifications()
@@ -1850,7 +1887,12 @@ end
 
 local function registerGameStateHook()
     local ok, value = pcall(function()
-        RegisterInitGameStatePostHook(function()
+        RegisterInitGameStatePostHook(function(context)
+            local mode, readable = readHookParam(context)
+            if readable and isValid(mode) then
+                local ok, state = pcall(function() return mode:GetWorld():GetPropertyValue("GameState") end)
+                if ok and isValid(state) then currentGameplayState = state end
+            end
             ExecuteInGameThreadWithDelay(50, function()
                 scanExisting("InitGameStatePost")
                 registerHostOnlyHooks()
@@ -1883,6 +1925,39 @@ local function registerConsoleCommand()
     end
 end
 
+local function startGameplayModule(name, options)
+    local loaded, module = pcall(require, name)
+    if not loaded or type(module) ~= "table" or type(module.start) ~= "function" then
+        logUiErrorOnce("GameplayModuleLoad/" .. name, module)
+        return nil
+    end
+    local started, state = pcall(module.start, options)
+    if not started or type(state) ~= "table" then
+        logUiErrorOnce("GameplayModuleStart/" .. name, state)
+        return nil
+    end
+    return state
+end
+
+local function ensureGameplayFixes()
+    local enabled = function() return not DIAGNOSTICS_ONLY end
+    if missileFix == nil then
+        missileFix = startGameplayModule("MissileFix", {
+            log = log, getPlayerCount = getWorldPlayerCount, isEnabled = enabled,
+        })
+    end
+    if jokerFix == nil then
+        jokerFix = startGameplayModule("JokerFix", { log = log, isEnabled = enabled })
+    end
+end
+
+local function callGameplayModule(state, name, method, ...)
+    if state ~= nil and type(state[method]) == "function" then
+        local ok, err = pcall(state[method], ...)
+        if not ok then logUiErrorOnce("GameplayModule/" .. name .. "/" .. method, err) end
+    end
+end
+
 log(string.format("Mod loaded - v%s", MOD_VERSION))
 log(string.format("Target MaxPlayers=%d", TARGET_MAX_PLAYERS))
 log(string.format("Target SessionRows=%d InviteSlotsWhenSolo=%d", TARGET_SESSION_ROWS, TARGET_SESSION_ROWS - 1))
@@ -1890,7 +1965,9 @@ log("HostOnlyMode=EXPERIMENTAL vanillaClients=UNVERIFIED allowModsRequired=true 
 log("LegacyRuntimePreview=EOS game-0.3.0.7 old-capacity-and-UI-logic-active five-to-eight-players-unverified")
 log("LegacyRuntimePreviewSafety=allow-mods-required old-Steam-room-and-join-hooks-unverified no-proof-from-one-guest")
 log("Implementation=source-owned-lua runtimeSessionUi=true legacyCapacityWrites=true eosCapacityUnverified=true selectiveJoinKickGuard=unverified cookedAssets=false")
+log("GameplayFixPreview=CL2852 missile-five-plus-timing=true joker-native-backup-shadow=true map-scoped=true multiplayer-runtime-unverified")
 
+ensureGameplayFixes()
 registerObjectNotifications()
 registerGameStateHook()
 registerConsoleCommand()
@@ -1923,6 +2000,7 @@ end)
 
 LoopInGameThreadWithDelay(500, function()
     applyTrackedCaps()
+    callGameplayModule(jokerFix, "JokerFix", "tick", currentGameplayState)
     sessionUiScanTick = sessionUiScanTick + 1
     if sessionUiScanTick % 2 == 0 then
         scanClass("UI_Menu_Container_CurrentSession_C", function(object)
@@ -1930,6 +2008,9 @@ LoopInGameThreadWithDelay(500, function()
         end)
     end
     if sessionUiScanTick % 10 == 0 then
+        ensureGameplayFixes()
+        callGameplayModule(missileFix, "MissileFix", "retryHooks")
+        callGameplayModule(jokerFix, "JokerFix", "retryHooks")
         registerHostOnlyHooks()
         registerSessionUiConstructHook()
         discoverCapacityHooks()

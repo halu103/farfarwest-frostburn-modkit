@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.4 - missile and same-map Joker fix preview (unreleased)
+
+- Retain the previous eight-player capacity and Session UI logic for game
+  `0.3.0.7 - CL 2852`.
+- Repair the TNT missile's missing initialization cases for 5–8 players. The
+  current game already requires four levers; its unhandled player-count switch
+  instead produces zero TNT/time defaults. Restore the existing four-player
+  baseline of 9 TNT and a 4-second lever window at the exact native timer nodes.
+  Keep the game's normal four-lever success, ignition and launch sequence.
+- Retain a map-scoped shadow of the game's native Joker backup, keyed by the
+  game's stable network player ID. Guests can receive a retained complete list
+  on Leave/Back or disconnect/rejoin to the same map when the native list is
+  missing/empty. Use the native replicated Joker component to apply cards and
+  effects; preserve current death/Uranium metadata.
+- Clear the shadow at mission end, lobby/menu, new world or map generation.
+  Prefer nonempty native state, never append cached cards, and retain legitimate
+  Joker removals. Verify writes and attempt rollback on partial failure.
+- Add offline policy and UE4SS-contract tests plus CI execution. These checks
+  do not prove live replication, mission rewards, 5–8 players or vanilla guests.
+- Build as a separate gameplay test package. No game launch or live install is
+  performed by the build. See `docs/GAMEPLAY_FIXES.md` for evidence, limitations
+  and a controlled multiplayer verification checklist.
+
 ## 1.2.3 - game 0.3.0.7 legacy-runtime test (unreleased)
 
 - Pin the installer to the installed Far Far West `0.3.0.7 - CL 2852`

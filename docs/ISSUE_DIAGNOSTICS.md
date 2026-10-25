@@ -1,5 +1,13 @@
 # Five-to-eight-player mission and Joker investigation
 
+Update: v1.2.4 now implements two adapters based on the current CL2852 assets.
+The missile issue is an unhandled 5+ setup switch producing zero timing,
+while the success threshold is already four levers. Joker retention shadows
+the game's new native reconnect backup and feeds its replicated restore path.
+See [current implementation and validation](GAMEPLAY_FIXES.md). The notes below
+are historical evidence for the September report; neither adapter has yet been
+validated in a real multiplayer run.
+
 The current public v1.2.2 build expands room capacity and session UI but only targets game 0.2.0.20. The local v1.2.3 legacy-runtime test targets game 0.3.0.7, retains the old capacity/Invite behavior and adds read-only evidence, but **does not** change objective logic or restore Joker data. The official October update moved matchmaking to EOS, added native Joker restoration for disconnect/reconnect, and changed missile progression. The v1.2.3 Joker snapshots from a previous 0.3.0.0 single-host run were `?/?/?/?` and cannot validate restoration. Do not advertise either issue as fixed until a controlled multiplayer test passes.
 
 The development Lua source now records read-only, bounded `JokerSnapshot` lines when PlayerState/Joker counts change and `MissionSnapshot` lines when the TNT missile objective is present with at least four players. After discovering the missile actor, it checks for changed lever state every 500 ms, including the transition from five to four players. The mission line includes the launcher's lever count, how many `BP_Lever.isPulled` flags are true, the TNT requirement/progress, and the blown flag. `MissionEvent` lines trace the game's own lever-enable and ignition functions. PlayerState objects are labelled `p1`, `p2`, etc. rather than by Steam name. Each `pN` has four collection counts in order: character Jokers / item Jokers / runtime Jokers / hero Jokers; `?` means the property could not be read. It does not give back Jokers, complete an objective, change saves, or alter the game installation by itself. These diagnostics are not in the published v1.2.2 package.

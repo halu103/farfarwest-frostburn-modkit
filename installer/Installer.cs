@@ -121,9 +121,11 @@ namespace FFWFrostburn8Installer
         {
             bool compatibilityPreview = BuildInfo.ReleaseChannel == "compatibility-preview";
             bool legacyRuntimePreview = BuildInfo.ReleaseChannel == "legacy-runtime-preview";
+            bool gameplayPreview = BuildInfo.ReleaseChannel == "gameplay-fix-preview";
             Text = "FFWFrostburn8 v" + BuildInfo.ModVersion +
                 (compatibilityPreview ? " - EOS Diagnostics Preview" :
-                 legacyRuntimePreview ? " - EOS Legacy Runtime Test" : " - Host-Only Experimental");
+                 legacyRuntimePreview ? " - EOS Legacy Runtime Test" :
+                 gameplayPreview ? " - Missile and Joker Fix Preview" : " - Host-Only Experimental");
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(760, 565);
             MinimumSize = new Size(720, 540);
@@ -135,7 +137,7 @@ namespace FFWFrostburn8Installer
             title.AutoSize = true;
             title.Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold, GraphicsUnit.Point);
             title.Location = new Point(24, 18);
-            title.Text = compatibilityPreview
+            title.Text = gameplayPreview ? "Far Far West - Missile and Joker Test" : compatibilityPreview
                 ? "Far Far West - EOS Compatibility Preview"
                 : legacyRuntimePreview
                     ? "Far Far West - 8 Players EOS Test"
@@ -148,7 +150,8 @@ namespace FFWFrostburn8Installer
             version.Location = new Point(27, 58);
             version.Text = "Mod v" + BuildInfo.ModVersion + "  |  Game " + BuildInfo.GameVersion +
                 "  |  " + (compatibilityPreview ? "Diagnostics only" :
-                    legacyRuntimePreview ? "Legacy runtime, unverified on EOS" : "Experimental offline package");
+                    legacyRuntimePreview ? "Legacy runtime, unverified on EOS" :
+                    gameplayPreview ? "Gameplay fixes - runtime test pending" : "Experimental offline package");
             Controls.Add(version);
 
             var warning = new Label();
@@ -158,7 +161,11 @@ namespace FFWFrostburn8Installer
             warning.Location = new Point(24, 88);
             warning.Size = new Size(712, 72);
             warning.Padding = new Padding(10, 8, 10, 8);
-            warning.Text = legacyRuntimePreview
+            warning.Text = gameplayPreview
+                ? "HOST ONLY / CHỈ HOST: missile timing and same-map Joker reconnect fixes are active. " +
+                  "Multiplayer testing is pending. Close Far Far West first. UE4SS files are backed up " +
+                  "and replaced. The installer never starts, closes, or restarts the game."
+                : legacyRuntimePreview
                 ? "HOST-ONLY EOS TEST / CHƯA XÁC NHẬN 8 NGƯỜI: earlier capacity and Invite logic is active. " +
                   "One guest joining does not prove players 5-8 can join. Tick Allow mods. Close the game first; " +
                   "UE4SS files are backed up and replaced. The installer never starts or restarts the game."
@@ -314,7 +321,11 @@ namespace FFWFrostburn8Installer
                 return;
             }
 
-            string previewWarning = BuildInfo.ReleaseChannel == "compatibility-preview"
+            string previewWarning = BuildInfo.ReleaseChannel == "gameplay-fix-preview"
+                ? "GAMEPLAY FIX PREVIEW: repairs five-plus-player missile timing and retains Joker backups " +
+                  "for reconnecting guests in the same map. The cache resets when the map ends. " +
+                  "Offline tests passed; multiplayer testing is pending. " + Environment.NewLine + Environment.NewLine
+                : BuildInfo.ReleaseChannel == "compatibility-preview"
                 ? "EOS COMPATIBILITY PREVIEW: this installs read-only diagnostics. " +
                   "Eight-player capacity, extra Invite rows, and the old join guard are disabled. " +
                   "It does not fix the missile or Joker issues. " + Environment.NewLine + Environment.NewLine
