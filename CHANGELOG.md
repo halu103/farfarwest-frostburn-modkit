@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.4 - CL 2979 compatibility update — 2026-11-01
+
+- Fix Setup rejecting the updated game as unsupported: pin the complete
+  ProductVersion `++depot+CanyonEngine_Dev-CL-2979` and the verified executable
+  SHA-256 for Steam build 26311307. Preserve exact version/hash checks.
+- Separate the readable `CL2979` download/UI label from the internal version
+  used by validation. Build matching standalone Setup and Uninstall EXEs.
+- Recheck the three existing UE4SS signatures and review the new cooked
+  missile/Joker contracts before carrying over the guarded adapters.
+- Retain the eight-player capacity and Session UI behavior, missile timing
+  fallback and map-scoped Joker backup shadow. Update runtime build markers.
+- Update the English README and current installation/update guidance.
+- Static/offline checks do not verify live 5–8 player EOS support, replication,
+  missile rewards or Joker restoration. No game auto-launch is added.
+
 ## 1.2.3 - official release — 2026-10-25
 
 - Use the requested official v1.2.3 version and standalone EXE packaging. This

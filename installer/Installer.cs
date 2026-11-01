@@ -32,7 +32,7 @@ namespace FFWFrostburn8Installer
             {
                 MessageBox.Show(
                     "FFWFrostburn8 Installer " + BuildInfo.ModVersion + Environment.NewLine +
-                    "Far Far West " + BuildInfo.GameVersion + Environment.NewLine +
+                    "Far Far West " + BuildInfo.GameDisplayVersion + Environment.NewLine +
                     "Channel: " + BuildInfo.ReleaseChannel,
                     "FFWFrostburn8",
                     MessageBoxButtons.OK,
@@ -151,7 +151,7 @@ namespace FFWFrostburn8Installer
             version.AutoSize = true;
             version.ForeColor = Color.DimGray;
             version.Location = new Point(27, 58);
-            version.Text = "Mod v" + BuildInfo.ModVersion + "  |  Game " + BuildInfo.GameVersion +
+            version.Text = "Mod v" + BuildInfo.ModVersion + "  |  Game " + BuildInfo.GameDisplayVersion +
                 "  |  " + (compatibilityPreview ? "Diagnostics only" :
                     legacyRuntimePreview ? "Legacy runtime, unverified on EOS" :
                     gameplayPreview ? "Gameplay fixes - runtime test pending" :

@@ -1,7 +1,7 @@
-# Official v1.2.3 missile and Joker fixes (game 0.3.0.7 / CL2852)
+# v1.2.4 missile and Joker adapters (game CL 2979)
 
-This build retains the earlier legacy-runtime capacity and Session UI behavior and adds two
-host-side adapters. The Lua policies and mocked UE4SS contracts are tested
+This build retains the capacity, Session UI and two host-side adapters introduced
+by the official v1.2.3 release. The Lua policies and mocked UE4SS contracts are tested
 offline. A real multiplayer run has not been performed for this build. The
 official version/stable packaging label does not imply verified multiplayer
 behavior or vanilla-client compatibility. The historical v1.2.3
@@ -89,7 +89,15 @@ the fallback count at zero. `FFW8_Status` prints module status and counters.
 Logs intentionally omit platform IDs. Seven Invite buttons alone do not
 validate an eight-person room or host-only vanilla-client compatibility.
 
-The source analysis uses assets extracted read-only from the installed CL2852
-game and the installed UE5.8 engine's script serialization definitions.
+The original analysis used the CL2852 game and the installed UE5.8 engine's
+script serialization definitions. For v1.2.4, relevant assets were extracted
+read-only from CL2979. The missile graph still uses the same initialization
+and first-lever timeout UUID/linkage pairs and four-lever completion check.
+The native multiplayer backup helper, Joker component, backup struct and
+GameMode exports match the previously analyzed exports byte-for-byte. The
+GameInstance and multiplayer manager have changed, so their whole assets
+must not be described as identical. The GameInstance's Joker setter logic
+was decoded again; its backup/card/death/Uranium fields remain the same.
+These static checks do not prove live UE4SS behavior or network replication.
 Commercial assets and bytecode dumps remain under ignored `work/` and are not
 included in the source release or installer.

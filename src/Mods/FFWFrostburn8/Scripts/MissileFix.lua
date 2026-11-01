@@ -1,4 +1,4 @@
--- CL2852's TNT missile graph enables four levers and checks >= 4. Its setup
+-- CL2979 retains CL2852's four-lever TNT missile graph and >= 4 check. Setup
 -- selects TNT/time values only for player counts 0..4; 5+ takes zero defaults.
 -- The setup repeats before its own Delay(1), so repair those two scalar defaults
 -- inside that native call, before the next game tick/lever interaction.
@@ -170,7 +170,7 @@ function MissileFix.start(options)
             return false
         end
         state.registered, state.preId, state.postId = true, preId, postId
-        log("registered CL2852 four-lever timing fix; no forced ignition")
+        log("registered CL2979 four-lever timing fix; no forced ignition")
         return true
     end
     state.retryHooks()

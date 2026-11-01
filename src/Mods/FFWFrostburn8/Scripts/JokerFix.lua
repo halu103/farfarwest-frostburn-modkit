@@ -1,5 +1,5 @@
 -- Host-side, map-scoped shadow of the game's native reconnect backup.
--- The 0.3.0.7 Blueprint contract is documented in docs/GAMEPLAY_FIXES.md.
+-- The CL2979 Blueprint contract is documented in docs/GAMEPLAY_FIXES.md.
 -- No direct inventory/effect writes: the native getter's out value feeds the
 -- existing replicated Joker component and its owning-client restore sequence.
 local RunState = require("RunState")

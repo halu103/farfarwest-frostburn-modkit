@@ -20,7 +20,9 @@ Do not direct players to GitHub's automatically generated source archive. See
 4. Click **Install / Cài** and confirm.
 5. Start the game normally, create a room, and tick **Allow mods**.
 
-Official v1.2.3 targets game `0.3.0.7 - CL 2852`. Its distribution channel is
+Release v1.2.4 targets game `CL 2979`, with exact internal ProductVersion
+`++depot+CanyonEngine_Dev-CL-2979`. The old v1.2.3 installer deliberately
+rejects that updated executable. Use the new CL2979/v1.2.4 EXEs. The channel is
 stable, but host-only vanilla-client compatibility remains unverified. Install it on the host
 only; test guests must use the same game version with no UE4SS/mod installation.
 It captures the room's **Allow mods** choice during room creation so a temporary

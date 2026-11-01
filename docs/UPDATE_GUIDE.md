@@ -1,7 +1,7 @@
 # Updating after a Far Far West patch
 
-The official v1.2.3 build for game 0.3.0.7 preserves the previous backend capacity
-and Invite-row logic and adds missile/Joker fixes. Live multiplayer validation
+The v1.2.4 build for game CL2979 preserves backend capacity, Invite-row logic
+and the missile/Joker adapters introduced in v1.2.3. Live multiplayer validation
 is pending. Read [the current contracts and checks](GAMEPLAY_FIXES.md) before
 changing the pinned game build; static signatures and one guest joining cannot
 validate the gameplay fixes or eight-player support.
@@ -215,7 +215,7 @@ Core startup can be automated, but multiplayer capacity cannot be honestly
 proven with one client. Use this live matrix before claiming verified host-only
 compatibility, regardless of the release-channel label:
 
-1. Host only has official v1.2.3; all guests are verified vanilla.
+1. Host only has v1.2.4; all guests are verified vanilla on the same game build.
 2. Clients 2–4 join normally.
 3. Client 5 joins once by session code and once by the game's current invite flow.
 4. Clients 6–8 join and all eight names appear.

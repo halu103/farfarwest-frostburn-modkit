@@ -329,6 +329,30 @@ if ($entryPointProcess.ExitCode -ne 0 -or
     throw "The native EXE read-only entry point failed on a sandbox path containing spaces."
 }
 
+# A matching ProductVersion must not bypass the exact executable hash guard.
+$tamperedGame = New-InstallerTestGame -TestRoot $testRoot `
+    -Name "tampered executable" -SourceExecutable $sourceExecutable -Lock $lock
+$tamperedExe = Join-Path $tamperedGame $lock.target.executableRelativePath.Replace('/', '\')
+$tamperedStream = [IO.File]::Open($tamperedExe, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+try {
+    $tamperedStream.Position = $tamperedStream.Length - 1
+    $lastByte = $tamperedStream.ReadByte()
+    $tamperedStream.Position = $tamperedStream.Length - 1
+    $tamperedStream.WriteByte([byte]($lastByte -bxor 1))
+} finally { $tamperedStream.Dispose() }
+if ((Get-Item -LiteralPath $tamperedExe).VersionInfo.ProductVersion -ne $lock.target.productVersion) {
+    throw "The tamper fixture must retain the matching ProductVersion."
+}
+$tamperedTree = Get-DirectoryTreeSha256 -Path $tamperedGame
+$tamperedLog = Join-Path $testRoot "tampered-executable-verification.log"
+$tamperedProcess = Start-Process -FilePath $installer -WindowStyle Hidden -Wait -PassThru `
+    -ArgumentList @("--verify-only", "--game-root", ('"' + $tamperedGame + '"'), "--log", ('"' + $tamperedLog + '"'))
+if ($tamperedProcess.ExitCode -eq 0 -or
+    (Get-Content -LiteralPath $tamperedLog -Raw) -notmatch "SHA-256 does not match" -or
+    (Get-DirectoryTreeSha256 -Path $tamperedGame) -ne $tamperedTree) {
+    throw "A modified executable with matching ProductVersion was not rejected without changing game files."
+}
+
 [pscustomobject]@{
     passed = $true
     installer = $installer
@@ -342,6 +366,7 @@ if ($entryPointProcess.ExitCode -ne 0 -or
     completeRollbackTreeHashVerified = $true
     nativeEntrypointWithSpacesVerified = $true
     unmanagedFilePreserved = $true
+    matchingVersionTamperedExecutableRejected = $true
     bothSandboxExecutablesUnchanged = $true
     realGameExecutableUnchanged = $true
     gameLaunched = $false

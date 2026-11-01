@@ -1,10 +1,11 @@
-# Far Far West Frostburn 8 Players — v1.2.3
+# Far Far West Frostburn 8 Players — v1.2.4
 
 An independent, source-owned UE4SS mod and maintenance kit for raising Far Far
 West's multiplayer capacity to eight players after the Frostburn/Unreal Engine
-5.8 update. Official release v1.2.3 targets game `0.3.0.7 - CL 2852`, retains
-the earlier capacity/Invite behavior, and adds missile timing and same-map Joker
-reconnect fixes. Offline tests pass; live multiplayer validation is pending.
+5.8 update. Release v1.2.4 targets **CL 2979** and fixes the older installer's
+`Unsupported game version` refusal after the latest game update. It retains
+eight-player capacity/Invite behavior, missile timing and same-map Joker
+reconnect adapters. Live multiplayer validation remains pending.
 An installer refusing a new version does not, by itself, prove that the
 already-installed mod stopped working.
 
@@ -18,11 +19,12 @@ contain cooked game assets.
 
 [Download Setup / Uninstall for Windows x64](https://github.com/halu103/farfarwest-frostburn-modkit/releases)
 
-**Check the downloaded filename and supported game version.** Older v1.2.2
-installers target `0.2.0.20 - CL 915` and refuse the new game. The earlier
-v1.2.3 legacy-runtime test is a separate historical package, without the new
-missile/Joker adapters. Use the official v1.2.3 release notes and checksums to
-distinguish it. A local build is not automatically uploaded to GitHub.
+**Check the downloaded filename and supported game version.** Use the
+`CL2979` / `v1.2.4` Setup for the current game. Official v1.2.3 targets
+`0.3.0.7 - CL 2852` and intentionally refuses CL 2979; v1.2.2 targets the
+older `0.2.0.20 - CL 915`. The historical v1.2.3 legacy-runtime test does not
+include the missile/Joker adapters. A local build is not automatically uploaded
+to GitHub.
 
 Download the file ending in `Setup.exe` and run it directly. The separate
 `Uninstall.exe` provides safe, mod-only removal with an optional advanced
@@ -51,15 +53,32 @@ required for installation; use the release's standalone Setup/Uninstall files.
 
 Current baseline:
 
-- Far Far West: `0.3.0.7 - CL 2852`
+- Far Far West: `CL 2979` (Steam build `26311307`)
+- Exact executable ProductVersion: `++depot+CanyonEngine_Dev-CL-2979`
 - Unreal Engine override: `5.8`
 - UE4SS: `v3.0.1-1109-g5b2663e9`
-- Owned mod: official release `v1.2.3` (MIT, stable packaging channel;
+- Owned mod: release `v1.2.4` (MIT, stable packaging channel;
   host-only deployment remains experimental)
 - Target capacity: `8` (old runtime logic retained; EOS multiplayer unverified)
 - Session UI target: `1 host + 7 invite slots` (old runtime logic retained)
 - Package mode: source-owned Lua only
 - Vanilla-client compatibility: unverified until a real 5–8 player test passes
+
+### What changed in v1.2.4
+
+- Update the installer and uninstaller to the installed CL 2979 executable's
+  exact ProductVersion and SHA-256. Keep strict checks instead of bypassing
+  compatibility protection after an update.
+- Use a readable `CL2979` label in download filenames and installer UI while
+  preserving the complete internal version string for validation.
+- Recheck all three existing UE4SS signature patterns against CL 2979.
+- Review the current missile timer nodes and native Joker backup contracts;
+  retain their guarded adapters and existing eight-player Session UI.
+- Refresh startup markers and validation guidance for the new game build.
+
+This is an installer compatibility update. It does not establish that an
+eight-player EOS session, missile completion or Joker restoration works in a
+live multiplayer run. See [the 1.2.4 verification report](docs/TEST_REPORT_1.2.4.md).
 
 ### Known multiplayer limitations
 
@@ -81,7 +100,7 @@ That statement does not establish whether voluntary Leave/Back should restore
 Jokers, or whether this mod affects that behavior. See the
 [historical investigation notes](docs/ISSUE_DIAGNOSTICS.md). v1.2.2 and the
 earlier v1.2.3 legacy-runtime package do not contain the adapters. Official
-v1.2.3 implements two adapters described in
+v1.2.3 introduced, and v1.2.4 retains, the adapters described in
 [gameplay fix details](docs/GAMEPLAY_FIXES.md): repair the missile's missing
 5+ initialization defaults, and shadow the native Joker backup for same-map
 reconnects. The adapters still require a controlled in-game multiplayer test.
@@ -94,7 +113,7 @@ not evidence of verified gameplay or vanilla-client compatibility.
 also describe new built-in Joker reconnection saving and changed missile
 progression; older assumptions require retesting.
 
-**Do not describe v1.2.3 as verified eight-player support.**
+**Do not describe v1.2.4 as verified eight-player support.**
 The old capacity and Invite code is active, but a two-player smoke test and
 seven visible Invite buttons do not prove that guests 5–8 can join through EOS.
 

@@ -31,6 +31,21 @@ function Get-ModData {
     return Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
 }
 
+function Get-GameArtifactVersion {
+    param([Parameter(Mandatory)] [object]$Lock)
+
+    # Match the exact executable ProductVersion during validation. A separate
+    # filename label avoids exposing Unreal's internal depot branch in assets.
+    if ($Lock.target.PSObject.Properties.Name -contains "artifactVersion") {
+        $label = [string]$Lock.target.artifactVersion
+        if ($label -notmatch '^[A-Za-z0-9][A-Za-z0-9_.-]*$') {
+            throw "Invalid game artifact label in the lock file."
+        }
+        return $label
+    }
+    return ([string]$Lock.target.productVersion -replace "\s*-\s*", "-" -replace "\s+", "")
+}
+
 function Get-Sha256 {
     param(
         [Parameter(Mandatory)]

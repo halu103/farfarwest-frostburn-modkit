@@ -100,6 +100,7 @@ namespace FFWFrostburn8Installer
         internal const string ModVersion = $(ConvertTo-CSharpStringLiteral ([string]$mod.version));
         internal static readonly string ReleaseChannel = $(ConvertTo-CSharpStringLiteral ([string]$mod.releaseChannel));
         internal const string GameVersion = $(ConvertTo-CSharpStringLiteral ([string]$lock.target.productVersion));
+        internal const string GameDisplayVersion = $(ConvertTo-CSharpStringLiteral (Get-GameArtifactVersion -Lock $lock));
         internal const string GameExecutableSha256 = $(ConvertTo-CSharpStringLiteral ([string]$lock.target.executableSha256));
         internal const string Ue4ssCommit = $(ConvertTo-CSharpStringLiteral ([string]$lock.ue4ss.commit));
         internal const string Ue4ssAssetSha256 = $(ConvertTo-CSharpStringLiteral ([string]$lock.ue4ss.assetSha256));
@@ -146,7 +147,7 @@ if (-not $OutputDirectory) {
 }
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
-$gameVersion = ([string]$lock.target.productVersion -replace "\s*-\s*", "-" -replace "\s+", "")
+$gameVersion = Get-GameArtifactVersion -Lock $lock
 $outputName = "FarFarWest-Frostburn-$gameVersion-$($mod.id)-v$($mod.version)-Setup.exe"
 $outputExe = Join-Path $outputRoot $outputName
 if (Test-Path -LiteralPath $outputExe -PathType Container) {

@@ -83,7 +83,7 @@ if ($mod.releaseChannel -eq "stable" -and
     }
     $checks += [pscustomobject]@{
         name = "Gameplay-fix build markers"
-        pattern = "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*GameplayFixes=CL2852.*missile-five-plus-timing=true.*joker-native-backup-shadow=true"
+        pattern = "\[$([regex]::Escape($mod.id)) v$([regex]::Escape($mod.version))\].*GameplayFixes=$([regex]::Escape((Get-GameArtifactVersion -Lock (Get-LockData)))).*missile-five-plus-timing=true.*joker-native-backup-shadow=true"
     }
 }
 

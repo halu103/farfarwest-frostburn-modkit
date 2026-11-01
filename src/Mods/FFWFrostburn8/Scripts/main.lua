@@ -4,7 +4,7 @@
 -- or code from another multiplayer mod.
 
 local MOD_ID = "FFWFrostburn8"
-local MOD_VERSION = "1.2.3"
+local MOD_VERSION = "1.2.4"
 local TARGET_MAX_PLAYERS = 8
 local VANILLA_MAX_PLAYERS = 4
 local TARGET_SESSION_ROWS = TARGET_MAX_PLAYERS
@@ -1962,10 +1962,10 @@ log(string.format("Mod loaded - v%s", MOD_VERSION))
 log(string.format("Target MaxPlayers=%d", TARGET_MAX_PLAYERS))
 log(string.format("Target SessionRows=%d InviteSlotsWhenSolo=%d", TARGET_SESSION_ROWS, TARGET_SESSION_ROWS - 1))
 log("HostOnlyMode=EXPERIMENTAL vanillaClients=UNVERIFIED allowModsRequired=true manualKickPreserved=true")
-log("ReleaseChannel=stable game-0.3.0.7-CL2852 legacy-capacity-and-UI-logic-active five-to-eight-players-unverified")
+log("ReleaseChannel=stable game-CL2979 legacy-capacity-and-UI-logic-active five-to-eight-players-unverified")
 log("RuntimeSafety=allow-mods-required old-Steam-room-and-join-hooks-unverified no-proof-from-one-guest")
 log("Implementation=source-owned-lua runtimeSessionUi=true legacyCapacityWrites=true eosCapacityUnverified=true selectiveJoinKickGuard=unverified cookedAssets=false")
-log("GameplayFixes=CL2852 missile-five-plus-timing=true joker-native-backup-shadow=true map-scoped=true multiplayer-runtime-unverified")
+log("GameplayFixes=CL2979 missile-five-plus-timing=true joker-native-backup-shadow=true map-scoped=true multiplayer-runtime-unverified")
 
 ensureGameplayFixes()
 registerObjectNotifications()

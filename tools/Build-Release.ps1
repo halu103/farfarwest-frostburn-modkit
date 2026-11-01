@@ -163,7 +163,7 @@ $buildNumber = if ($lock.ue4ss.asset -match "-(\d+)-g[0-9a-fA-F]+\.zip$") {
 } else {
     "custom"
 }
-$gameVersion = ($lock.target.productVersion -replace "\s*-\s*", "-" -replace "\s+", "")
+$gameVersion = Get-GameArtifactVersion -Lock $lock
 $zipName = "FarFarWest-Frostburn-$gameVersion-$($mod.id)-v$($mod.version)-UE4SS-$buildNumber.zip"
 $outputZip = Join-Path $outputRoot $zipName
 if (Test-Path -LiteralPath $outputZip) {

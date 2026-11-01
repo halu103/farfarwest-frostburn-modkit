@@ -27,7 +27,7 @@ namespace FFWFrostburn8Installer
             {
                 MessageBox.Show(
                     "FFWFrostburn8 Uninstaller " + BuildInfo.ModVersion + Environment.NewLine +
-                    "Far Far West " + BuildInfo.GameVersion,
+                    "Far Far West " + BuildInfo.GameDisplayVersion,
                     "FFWFrostburn8",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
