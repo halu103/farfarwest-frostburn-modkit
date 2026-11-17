@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.5 - 0.3.0.11 / CL 3041 compatibility update — 2026-11-17
+
+- Target Far Far West `0.3.0.11 / CL 3041` (Steam build `26708584`), using the
+  exact executable ProductVersion `++depot+ReleaseEngine_Dev-CL-3041` and
+  SHA-256. Keep the strict installer compatibility checks.
+- Retain the eight-player capacity, Session UI, missile timing fallback and
+  same-map Joker recovery logic from v1.2.4.
+- Keep separate Setup and Uninstall EXEs with adjacent SHA-256 checksums;
+  no player ZIP is required. Update the installer guidance and website build
+  label to match the new Steam patch.
+- Compatibility checks do not replace live 5–8 player EOS, missile and Joker
+  validation. No automatic game launch or Steam update is added.
+
 ## 1.2.4 - CL 2979 compatibility update — 2026-11-01
 
 - Fix Setup rejecting the updated game as unsupported: pin the complete

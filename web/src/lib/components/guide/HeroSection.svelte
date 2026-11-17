@@ -11,6 +11,7 @@
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
+	import { GAME_BUILD_LABEL } from '#lib/game-build.js';
 	import * as m from '#lib/paraglide/messages.js';
 	import { getLocaleForUrl } from '#lib/paraglide/runtime.js';
 	import { REPOSITORY_URL } from '#lib';
@@ -234,7 +235,7 @@
 	>
 		<div class="stat-cell">
 			<span>{m.stat_game_label()}</span>
-			<strong>{m.stat_game_value()}</strong>
+			<strong>{GAME_BUILD_LABEL}</strong>
 		</div>
 
 		<div class="stat-cell sm:border-l sm:border-border/50">

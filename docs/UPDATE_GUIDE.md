@@ -1,8 +1,8 @@
 # Updating after a Far Far West patch
 
-The v1.2.4 build for game CL2979 preserves backend capacity, Invite-row logic
-and the missile/Joker adapters introduced in v1.2.3. Live multiplayer validation
-is pending. Read [the current contracts and checks](GAMEPLAY_FIXES.md) before
+The v1.2.5 build for game `0.3.0.11 / CL 3041` preserves backend capacity,
+Invite-row logic and the missile/Joker adapters introduced in v1.2.3. Live
+multiplayer validation is pending. Read [the current contracts and checks](GAMEPLAY_FIXES.md) before
 changing the pinned game build; static signatures and one guest joining cannot
 validate the gameplay fixes or eight-player support.
 
@@ -49,7 +49,19 @@ means the pattern is ambiguous. Do not package or install either case.
 the runtime signature directory unless a future UE4SS build is proven to accept
 that override.
 
-## 2. Refresh official UE4SS and lock the game
+## 2. Pin the game build and review UE4SS compatibility
+
+Keep the previous UE4SS version when compatibility checks show it still fits
+and there is no reason to replace it. Pin the installed executable's exact
+`productVersion` and `executableSha256` in `config/upstream.lock.json`, separately
+from the public Steam patch (`gameVersion`) and DLL/EXE naming label
+(`artifactVersion`, e.g. `CL3041`). Mirror only those two display fields in
+`web/src/lib/game-build.json`; `pnpm test` in `web/` verifies that they match.
+Match `TARGET_BUILD_LABEL` in `src/Mods/FFWFrostburn8/Scripts/main.lua` to
+`artifactVersion` as well; `Test-Project.ps1` checks this runtime-log label.
+Do not infer the Steam patch number from the executable's changelist.
+
+If the game requires a different official UE4SS build, use the refresh script.
 
 Windows PowerShell 5.1:
 
@@ -132,27 +144,27 @@ Record and publish the resulting EXE's SHA-256. Local builds are unsigned; a
 public release should be Authenticode-signed when a trusted certificate is
 available.
 
-After the EXE passes the isolated install/rollback test, create the flat player
-download bundle. Run only the command matching the installed edition.
+Build the standalone uninstaller in the same output directory. Run only the
+command matching the installed edition.
 
 Windows PowerShell 5.1:
 
 ```powershell
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-DownloadBundle.ps1 `
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-UninstallerExe.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
 PowerShell 7+:
 
 ```powershell
-pwsh.exe -NoLogo -NoProfile -File .\tools\Build-DownloadBundle.ps1 `
+pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tools\Build-UninstallerExe.ps1 `
   -GameRoot "D:\SteamLibrary\steamapps\common\FarFarWest"
 ```
 
-Upload the six generated distribution files (Setup, Uninstall, player ZIP and
-their three SHA-256 sidecars) as GitHub Release assets. Use a fresh explicit
-output directory when preserving historical builds; the current official
-v1.2.3 and earlier v1.2.3 `LEGACY-TEST` package are distinct artifacts.
+Use a fresh explicit output directory and test both EXEs against sandbox
+fixtures. Upload the four generated distribution files (standalone Setup,
+Uninstall, and their two SHA-256 sidecars) as GitHub Release assets. A player
+ZIP is optional; do not overwrite historical release files.
 Do not tell players to use **Code → Download ZIP**; that archive is source only.
 See [publishing a release](PUBLISHING.md).
 
@@ -215,7 +227,7 @@ Core startup can be automated, but multiplayer capacity cannot be honestly
 proven with one client. Use this live matrix before claiming verified host-only
 compatibility, regardless of the release-channel label:
 
-1. Host only has v1.2.4; all guests are verified vanilla on the same game build.
+1. Host only has the updated mod; all guests are verified vanilla on the same game build.
 2. Clients 2–4 join normally.
 3. Client 5 joins once by session code and once by the game's current invite flow.
 4. Clients 6–8 join and all eight names appear.

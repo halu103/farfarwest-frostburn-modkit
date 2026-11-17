@@ -170,7 +170,7 @@ function MissileFix.start(options)
             return false
         end
         state.registered, state.preId, state.postId = true, preId, postId
-        log("registered CL2979 four-lever timing fix; no forced ignition")
+        log("registered four-lever timing fix; no forced ignition")
         return true
     end
     state.retryHooks()

@@ -1,8 +1,8 @@
-# Publishing the v1.2.4 player build
+# Publishing the v1.2.5 player build
 
-Release v1.2.4 uses the `stable` packaging channel and targets Far Far West
-`CL 2979`. It retains capacity/Invite behavior and includes the
-missile/Joker adapters. The release label does not change the evidence:
+Release v1.2.5 uses the `stable` packaging channel and targets Far Far West
+`0.3.0.11 / CL 3041` (Steam build `26708584`). It retains capacity/Invite
+behavior and the missile/Joker adapters. The release label does not change the evidence:
 multiplayer gameplay, eight-player EOS sessions and host-only vanilla guests
 remain unverified. State those limits in the release notes.
 
@@ -40,14 +40,14 @@ for 5.1, or `pwsh.exe -NoProfile -ExecutionPolicy Bypass` for 7+. This does not
 change the machine-wide policy. See [PowerShell compatibility](POWERSHELL.md).
 
 From the project root, use a **new explicit output directory** so legacy and
-official builds are not mixed. The name below is for the CL2979 build;
+official builds are not mixed. The name below is for the CL3041 build;
 choose a fresh suffix if preserving an earlier build at the same path.
 
 ```powershell
-$releaseRoot = Join-Path (Get-Location).Path 'dist\release-v1.2.4'
+$releaseRoot = Join-Path (Get-Location).Path 'dist\release-v1.2.5'
 $gameRoot = 'D:\SteamLibrary\steamapps\common\FarFarWest'
-$setupPath = Join-Path $releaseRoot 'FarFarWest-Frostburn-CL2979-FFWFrostburn8-v1.2.4-Setup.exe'
-$uninstallPath = Join-Path $releaseRoot 'FarFarWest-Frostburn-CL2979-FFWFrostburn8-v1.2.4-Uninstall.exe'
+$setupPath = Join-Path $releaseRoot 'FarFarWest-Frostburn-CL3041-FFWFrostburn8-v1.2.5-Setup.exe'
+$uninstallPath = Join-Path $releaseRoot 'FarFarWest-Frostburn-CL3041-FFWFrostburn8-v1.2.5-Uninstall.exe'
 
 & .\tools\Test-Project.ps1
 & .\tools\Test-GameplayFixes.ps1
@@ -62,14 +62,14 @@ The gameplay policy/adapter tests require Node.js/npm and pinned Fengari CLI
 they share an installer mutex. These tests operate on isolated fixtures; they
 do not install into or launch the real game.
 
-The four upload files are in `dist\release-v1.2.4\`, just like the earlier
+The four upload files are in `dist\release-v1.2.5\`, just like the earlier
 standalone EXE releases:
 
 ```text
-FarFarWest-Frostburn-CL2979-FFWFrostburn8-v1.2.4-Setup.exe
-FarFarWest-Frostburn-CL2979-FFWFrostburn8-v1.2.4-Setup.exe.sha256.txt
-FarFarWest-Frostburn-CL2979-FFWFrostburn8-v1.2.4-Uninstall.exe
-FarFarWest-Frostburn-CL2979-FFWFrostburn8-v1.2.4-Uninstall.exe.sha256.txt
+FarFarWest-Frostburn-CL3041-FFWFrostburn8-v1.2.5-Setup.exe
+FarFarWest-Frostburn-CL3041-FFWFrostburn8-v1.2.5-Setup.exe.sha256.txt
+FarFarWest-Frostburn-CL3041-FFWFrostburn8-v1.2.5-Uninstall.exe
+FarFarWest-Frostburn-CL3041-FFWFrostburn8-v1.2.5-Uninstall.exe.sha256.txt
 ```
 
 The Setup EXE already embeds the complete mod payload. Do not run
@@ -77,7 +77,7 @@ The Setup EXE already embeds the complete mod payload. Do not run
 not a prerequisite or another mod dependency. Both EXE builders run read-only
 verification; the sandbox tests check install/uninstall and rollback. They do
 not install into or launch the real game. Update
-[the v1.2.4 test report](TEST_REPORT_1.2.4.md) with the exact new artifact hashes;
+[the v1.2.5 test report](TEST_REPORT_1.2.5.md) with the exact new artifact hashes;
 do not reuse hashes from a preview or legacy build.
 
 ## 2. Create the GitHub Release
@@ -85,11 +85,11 @@ do not reuse hashes from a preview or legacy build.
 On [the project repository](https://github.com/halu103/farfarwest-frostburn-modkit):
 
 1. Review and commit the source used for the build, then draft a new release.
-2. Use a new tag such as `v1.2.4` if that tag does not already exist. Otherwise
+2. Use a new tag such as `v1.2.5` if that tag does not already exist. Otherwise
    choose a fresh tag only after reviewing existing releases. Never move or replace
    a previously published legacy tag without an explicit migration.
-3. Use a title such as `FFWFrostburn8 v1.2.4 — Far Far West CL 2979`.
-4. Upload the four files from `dist/release-v1.2.4`, not the old `LEGACY-TEST`
+3. Use a title such as `FFWFrostburn8 v1.2.5 — Far Far West 0.3.0.11 / CL 3041`.
+4. Upload the four files from `dist/release-v1.2.5`, not the old `LEGACY-TEST`
    ZIP, raw source package, or build-intermediate directories.
 5. Include the supported game build, new SHA-256 values, changes and known
    runtime limits. Say the EXEs are unsigned; no antivirus or Nexus approval

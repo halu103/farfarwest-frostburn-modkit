@@ -197,6 +197,11 @@ if ($sourceMod -and (Test-Path -LiteralPath $sourceMod -PathType Container)) {
         $maxPattern = '(?m)^local TARGET_MAX_PLAYERS\s*=\s*' + [regex]::Escape([string]$mod.maxPlayers) + '\s*$'
         Assert-ProjectCheck -Condition ($mainLua -match $versionPattern) `
             -Message "Lua MOD_VERSION does not match src/mod.json."
+        if ($lock.target.PSObject.Properties.Name -contains "artifactVersion") {
+            $buildLabel = [regex]::Escape((Get-GameArtifactVersion -Lock $lock))
+            Assert-ProjectCheck -Condition ($mainLua -match ('(?m)^local TARGET_BUILD_LABEL\s*=\s*"' + $buildLabel + '"\s*$')) `
+                -Message "Lua TARGET_BUILD_LABEL must match the locked game artifact version."
+        }
         Assert-ProjectCheck -Condition ($mainLua -match $maxPattern) `
             -Message "Lua TARGET_MAX_PLAYERS does not match src/mod.json."
         if ($mod.releaseChannel -in @("stable", "legacy-runtime-preview", "gameplay-fix-preview")) {

@@ -20,11 +20,12 @@ Do not direct players to GitHub's automatically generated source archive. See
 4. Click **Install / Cài** and confirm.
 5. Start the game normally, create a room, and tick **Allow mods**.
 
-Release v1.2.4 targets game `CL 2979`, with exact internal ProductVersion
-`++depot+CanyonEngine_Dev-CL-2979`. The old v1.2.3 installer deliberately
-rejects that updated executable. Use the new CL2979/v1.2.4 EXEs. The channel is
-stable, but host-only vanilla-client compatibility remains unverified. Install it on the host
-only; test guests must use the same game version with no UE4SS/mod installation.
+Release v1.2.5 targets game `0.3.0.11 / CL 3041` (Steam build `26708584`), with
+exact internal ProductVersion `++depot+ReleaseEngine_Dev-CL-3041`. The earlier
+v1.2.4 installer intentionally rejects this new executable because it targets
+CL 2979. Use the CL3041/v1.2.5 EXEs. The channel is stable, but host-only
+vanilla-client compatibility remains unverified. Install it on the host only;
+test guests must use the same game version with no UE4SS/mod installation.
 It captures the room's **Allow mods** choice during room creation so a temporary
 widget-visibility race cannot collapse the interface to the vanilla three
 Invite buttons. With one host it should show seven Invite buttons; with five

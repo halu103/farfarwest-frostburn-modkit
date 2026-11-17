@@ -10,6 +10,7 @@
 	import * as Alert from '#lib/components/ui/alert/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
+	import { GAME_BUILD_LABEL } from '#lib/game-build.js';
 	import * as m from '#lib/paraglide/messages.js';
 
 	let hostPoints = $derived([m.host_point_1(), m.host_point_2(), m.host_point_3()]);
@@ -17,7 +18,7 @@
 	let preflightItems = $derived([
 		m.preflight_item_1(),
 		m.preflight_item_2(),
-		m.preflight_item_3(),
+		m.preflight_item_3({ build: GAME_BUILD_LABEL }),
 		m.preflight_item_4()
 	]);
 </script>

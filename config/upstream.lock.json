@@ -3,10 +3,11 @@
   "projectVersion": "1.0.0",
   "target": {
     "game": "Far Far West",
-    "productVersion": "++depot+CanyonEngine_Dev-CL-2979",
-    "artifactVersion": "CL2979",
+    "gameVersion": "0.3.0.11",
+    "productVersion": "++depot+ReleaseEngine_Dev-CL-3041",
+    "artifactVersion": "CL3041",
     "executableRelativePath": "FarFarWest/Binaries/Win64/FarFarWest-Win64-Shipping.exe",
-    "executableSha256": "07C476D198ED2D40BABB675E3FAEF68E9B2F3F6E7B8E125F2418A95E5262474A",
+    "executableSha256": "02B2E84C522882D480CD6F30333AC1975D2E08BB60298B15CE294964B250FB95",
     "unrealEngineMajor": 5,
     "unrealEngineMinor": 8
   },

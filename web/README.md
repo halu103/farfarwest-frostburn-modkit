@@ -18,6 +18,11 @@ pnpm build
 pnpm dev
 ```
 
+The game build label and preflight checklist share `src/lib/game-build.json`.
+When the installer target changes, update its `gameVersion` and `artifactVersion`
+from `../config/upstream.lock.json`. The web tests fail if either value drifts,
+while the site can still build with Vercel's `web` root directory.
+
 ## Release discovery
 
 The server reads the repository's public GitHub Releases API. It shows up to
@@ -51,7 +56,7 @@ The token and API requests stay server-side.
 4. Check that the new deployment is assigned to the production domain. Reload
    the page and confirm `legacy-v1.2.3` appears with its actual long Setup URL.
    After the official release is uploaded, check that its actual tag appears
-   newest and the Setup URL downloads the correct v1.2.3 EXE.
+   newest and the Setup URL downloads the EXE matching the current game build.
 
 If the site still displays only v1.2.2, verify that Vercel deployed the commit
 containing this release parser, not merely that GitHub contains a newer mod
